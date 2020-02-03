@@ -1,0 +1,44 @@
+---
+title: "Trabajo 1 - TAE"
+author: "Luis Daniel Chavarría"
+date: "2/2/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+
+```{r}
+library(data.table)
+library(tidyverse)
+library(naniar)
+```
+
+# Data reading
+
+```{r}
+raw_data <- fread("encuesta_calidad_vida.csv") %>% 
+  as_tibble()
+```
+
+# NA cleaning
+
+```{r}
+data_na <- raw_data %>%
+  naniar::replace_with_na_all(~.x %in% c(common_na_numbers, common_na_strings))
+
+data_88 <- data_na %>% 
+  na_if(-88) %>% 
+  na_if(-98) %>% 
+  na_if(-97) %>% 
+  na_if(-77)
+
+data_88 %>% 
+  fwrite("data_88.csv", sep = ";")
+```
+
