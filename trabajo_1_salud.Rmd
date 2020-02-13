@@ -1,0 +1,123 @@
+---
+title: "Trabajo 1 TAE - Salud"
+author: "Nuestro equipo"
+date: "12/2/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Librerías
+
+```{r}
+library(tidyverse)
+library(data.table)
+library(readxl)
+```
+
+# Lectura de datos
+
+```{r}
+raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
+  as_tibble()
+
+diccionario <- read_excel("databases/diccionario_ecv_2016.xlsx")
+```
+
+# Número de encuestados por barrio
+
+```{r}
+raw_encuesta %>% 
+  count(`encuesta_calidad.barrio`, sort = T) %>% 
+  arrange(n)
+```
+
+# Necesitamos imputar datos
+
+```{r}
+raw_encuesta %>% 
+  group_by(encuesta_calidad.barrio) %>% 
+  summarize(usables = sum(!is.na(`encuesta_calidad.p_341`))) %>%
+  arrange(usables)
+
+# Ver Summary
+raw_encuesta %>% select(`encuesta_calidad.p_341`) %>% summary()
+```
+
+Parece que será necesario imputar datos en algunos casos ya que hay muchos barrios importantes mal representados en este tipo de pregunta.
+
+## Creación de la base de datos
+
+# Discapacidad 
+
+Con base en la cantidad de dos, se concluye que éste está asociado al "No", dado que se espera, en general, que el número de personas discapacitadas sea considerablemente menor al de no discapacitadas.
+
+```{r}
+raw_encuesta %>% 
+select(paste0("encuesta_calidad.p_", 50:57)) %>% 
+  mutate_all(as_factor) %>% 
+  summary()
+
+encuesta_salud <- raw_encuesta %>% 
+  mutate(discapacidad = case_when(encuesta_calidad.p_50 == 1 ~ 1,
+                                  encuesta_calidad.p_51 == 1 ~ 1,
+                                  encuesta_calidad.p_52 == 1 ~ 1,
+                                  encuesta_calidad.p_53 == 1 ~ 1,
+                                  encuesta_calidad.p_54 == 1 ~ 1,
+                                  encuesta_calidad.p_55 == 1 ~ 1,
+                                  encuesta_calidad.p_56 == 1 ~ 1,
+                                  encuesta_calidad.p_57 == 1 ~ 1,
+                                  TRUE ~ 0))
+```
+
+# Agregación por barrio
+
+```{r}
+encuesta_salud %>%
+  filter(`encuesta_calidad.p_324` == 1,
+         encuesta_calidad.barrio == "AREA DE EXPANCION SAN CRISTOBAL")
+
+# Función para la moda
+getmode <- function(v) {
+  v <- v[!is.na(v)]
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+
+
+db_salud <- encuesta_salud %>% 
+  group_by(encuesta_calidad.barrio) %>% 
+  summarize(n = n(),
+            discapacidad = sum(discapacidad == 1, na.rm = TRUE)/sum(!is.na(discapacidad), na.rm = TRUE),
+            acceso_salud = mean(`encuesta_calidad.p_265`, na.rm = TRUE),
+            calidad_salud = mean(`encuesta_calidad.p_266`, na.rm = TRUE),
+            morbilidad_30 = sum(`encuesta_calidad.p_324` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_324`), na.rm = TRUE), #Los NaN deben ser reemplazados por cero en esta variable, ya que hay división por cero, indica cero casos generales
+            motivo_negacion = getmode(`encuesta_calidad.p_324`),
+            conteo_prevencion = median(`encuesta_calidad.p_328`, na.rm = TRUE),
+            calidad_prevencion = mean(`encuesta_calidad.p_329`, na.rm = TRUE),
+            consulta_medico_general = mean(`encuesta_calidad.p_331`, na.rm = TRUE),
+            calidad_medico_general = mean(`encuesta_calidad.p_332`, na.rm = TRUE),
+            consulta_medico_especialista = mean(`encuesta_calidad.p_334`, na.rm = TRUE),
+            calidad_medico_especialista = mean(`encuesta_calidad.p_335`, na.rm = TRUE),
+            consulta_urgencias = mean(`encuesta_calidad.p_337`, na.rm = TRUE),
+            calidad_urgencias = mean(`encuesta_calidad.p_338`, na.rm = TRUE),
+            hospitalizacion = mean(`encuesta_calidad.p_340`, na.rm = TRUE),
+            calidad_hospitalizacion = mean(`encuesta_calidad.p_341`, na.rm = TRUE)
+            )
+
+db_salud
+db_salud[complete.cases(db_salud),]
+```
+
+# Escritura
+
+```{r}
+write_excel_csv2(db_salud, "databases/db_salud.csv")
+write_excel_csv2(db_salud[complete.cases(db_salud),], "databases/db_salud_completecases.csv")
+```
+
