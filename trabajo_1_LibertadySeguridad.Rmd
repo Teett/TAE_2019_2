@@ -1,0 +1,65 @@
+---
+title: "Trabajo 1 TAE - Libertad y seguridad"
+author: "Equipo"
+date: "13/2/2020"
+output: html_document
+---
+Librerias 
+```{r}
+library(tidyverse)
+library(data.table)
+library(readxl)
+```
+Lectura de datos: 
+```{r}
+raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
+  as_tibble()
+
+diccionario <- read_excel("databases/diccionario_ecv_2016.xlsx")
+```
+Número de encuestados:
+```{r}
+raw_encuesta %>% 
+  count(`encuesta_calidad.barrio`, sort = T) %>% 
+  arrange(n)
+```
+/Creación de la base de datos/
+
+```{r}
+# FunciÃ³n para la moda
+getmode <- function(v) {
+  v <- v[!is.na(v)]
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+encuesta_seguridad <- raw_encuesta%>%
+  mutate(accidentalidad=case_when(encuesta_calidad.p_230 ==1 ~1,
+                                  TRUE~0))%>%
+  mutate(asalto=case_when(encuesta_calidad.p_286 != 20 ~1,
+                          TRUE~0))
+
+
+db_LibertadySeguridad<-encuesta_seguridad%>%
+  group_by(encuesta_calidad.barrio)%>%
+  summarize(n=n(),
+            accidentalidad=sum(accidentalidad==1,na.rm = TRUE)/sum(!is.na(accidentalidad),na.rm = TRUE),
+            movilidad_libre=getmode(`encuesta_calidad.p_281`),
+            satisfaccion_barrio=getmode(`encuesta_calidad.p_283`),
+            seguridad=getmode(`encuesta_calidad.p_284`),
+            asalto=sum(asalto==1,na.rm = TRUE)/sum(!is.na(asalto),na.rm = TRUE),
+            convivencia=getmode(`encuesta_calidad.p_289`)
+            )
+db_LibertadySeguridad
+db_LibertadySeguridad[complete.cases(db_LibertadySeguridad),]
+
+```
+# Escritura
+
+```{r}
+write_excel_csv2(db_LibertadySeguridad, "databases/db_LibertadySeguridad.csv")
+write_excel_csv2(db_LibertadySeguridad[complete.cases(db_LibertadySeguridad),], "databases/db_LibertadySeguridad_completecases.csv")
+```
+
+
+

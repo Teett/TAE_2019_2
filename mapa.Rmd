@@ -1,0 +1,41 @@
+---
+title: "Geocoding y mapa"
+author: "Daniel"
+date: "15/2/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Librerías
+
+```{r}
+library(tidyverse)
+library(leaflet)
+library(data.table)
+library(raster)
+```
+
+
+# Lectura
+
+```{r}
+raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
+  as_tibble()
+```
+
+# Geocoding
+
+```{r}
+political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
+
+leaflet(data = political) %>% 
+  addTiles() %>% 
+  addProviderTiles(providers$OpenStreetMap) %>% 
+  addPolygons(fill = TRUE, stroke = TRUE, color = "#03F") %>% addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
+```
+

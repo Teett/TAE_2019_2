@@ -24,8 +24,6 @@ library(readxl)
 ```{r}
 raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
   as_tibble()
-
-diccionario <- read_excel("databases/diccionario_ecv_2016.xlsx")
 ```
 
 # Número de encuestados por barrio
@@ -82,33 +80,40 @@ encuesta_salud %>%
          encuesta_calidad.barrio == "AREA DE EXPANCION SAN CRISTOBAL")
 
 # Función para la moda
-getmode <- function(v) {
-  v <- v[!is.na(v)]
+getmode <- function(v, na.rm = TRUE) {
+  if(na.rm == TRUE) {
+    v <- v[!is.na(v)]
    uniqv <- unique(v)
    uniqv[which.max(tabulate(match(v, uniqv)))]
+   } else {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+  }
 }
 
 
 
 db_salud <- encuesta_salud %>% 
-  group_by(encuesta_calidad.barrio) %>% 
+  group_by(encuesta_calidad.barrio, encuesta_calidad.comuna) %>% 
   summarize(n = n(),
             discapacidad = sum(discapacidad == 1, na.rm = TRUE)/sum(!is.na(discapacidad), na.rm = TRUE),
             acceso_salud = mean(`encuesta_calidad.p_265`, na.rm = TRUE),
-            calidad_salud = mean(`encuesta_calidad.p_266`, na.rm = TRUE),
-            morbilidad_30 = sum(`encuesta_calidad.p_324` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_324`), na.rm = TRUE), #Los NaN deben ser reemplazados por cero en esta variable, ya que hay división por cero, indica cero casos generales
-            motivo_negacion = getmode(`encuesta_calidad.p_324`),
+            calidad_salud = getmode(`encuesta_calidad.p_266`, na.rm = TRUE),
+            morbilidad_30 = sum(`encuesta_calidad.p_324` == 1, na.rm = TRUE)/
+              sum(!is.na(`encuesta_calidad.p_324`), na.rm = TRUE), 
+            motivo_negacion = getmode(`encuesta_calidad.p_324`, na.rm = TRUE),
             conteo_prevencion = median(`encuesta_calidad.p_328`, na.rm = TRUE),
-            calidad_prevencion = mean(`encuesta_calidad.p_329`, na.rm = TRUE),
+            calidad_prevencion = getmode(`encuesta_calidad.p_329`, na.rm = TRUE),
             consulta_medico_general = mean(`encuesta_calidad.p_331`, na.rm = TRUE),
-            calidad_medico_general = mean(`encuesta_calidad.p_332`, na.rm = TRUE),
+            calidad_medico_general = getmode(`encuesta_calidad.p_332`, na.rm = TRUE),
             consulta_medico_especialista = mean(`encuesta_calidad.p_334`, na.rm = TRUE),
-            calidad_medico_especialista = mean(`encuesta_calidad.p_335`, na.rm = TRUE),
+            calidad_medico_especialista = getmode(`encuesta_calidad.p_335`, na.rm = TRUE),
             consulta_urgencias = mean(`encuesta_calidad.p_337`, na.rm = TRUE),
-            calidad_urgencias = mean(`encuesta_calidad.p_338`, na.rm = TRUE),
+            calidad_urgencias = getmode(`encuesta_calidad.p_338`, na.rm = TRUE),
             hospitalizacion = mean(`encuesta_calidad.p_340`, na.rm = TRUE),
-            calidad_hospitalizacion = mean(`encuesta_calidad.p_341`, na.rm = TRUE)
-            )
+            calidad_hospitalizacion = getmode(`encuesta_calidad.p_341`, na.rm = TRUE)
+            ) %>% 
+  mutate(morbilidad_30 = replace_na(morbilidad_30, 0)) # Reemplazar NAs de morbilidad_30 por cero
 
 db_salud
 db_salud[complete.cases(db_salud),]
