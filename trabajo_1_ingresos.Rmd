@@ -1,0 +1,74 @@
+---
+title: "Trabajo 1 TAE - Libertad y seguridad"
+author: "Equipo"
+date: "13/2/2020"
+output: html_document
+---
+Librerias 
+```{r}
+library(tidyverse)
+library(data.table)
+library(readxl)
+```
+Lectura de datos: 
+```{r}
+raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
+  as_tibble()
+
+diccionario <- read_excel("databases/diccionario_ecv_2016.xlsx")
+```
+Número de encuestados:
+```{r}
+raw_encuesta %>% 
+  count(`encuesta_calidad.barrio`, sort = T) %>% 
+  arrange(n)
+```
+/Creación de la base de datos/
+
+```{r}
+encuesta_ingresos<-raw_encuesta%>%
+  mutate(ingreso_extra=case_when(encuesta_calidad.p_71 == 1 ~1,
+                                 TRUE~ 0))%>%
+  mutate(pension=case_when(encuesta_calidad.p_71 != 0~1,
+                                 TRUE~ 0))%>%
+  mutate(subsidio=case_when(encuesta_calidad.p_93 != 0~1,
+                                 TRUE~ 0))%>%
+  mutate(salario=case_when(encuesta_calidad.p_121 != 0~1,
+                                 TRUE~ 0))%>%
+  mutate(arriendo=case_when(encuesta_calidad.p_227 != 0~1,
+                                 TRUE~ 0))%>%
+  mutate(total_gastos=case_when(encuesta_calidad.p_232 != 0~1,
+                                 TRUE~ 0))%>%
+  mutate(gasto_servicios=case_when(encuesta_calidad.p_240 != 0~1,
+                                 TRUE~ 0))%>%
+  mutate(gasto_hogar=case_when(encuesta_calidad.p_254 != 0~1,
+                                 TRUE~ 0))
+
+
+
+db_ingresos<-encuesta_ingresos%>%
+  group_by(encuesta_calidad.barrio)%>%
+  summarize(n=n(),
+            ingreso_extra=sum(ingreso_extra==1,na.rm = TRUE)/sum(!is.na(ingreso_extra),
+                                                                 na.rm=TRUE),
+            pension=sum(pension==1,na.rm = TRUE)/sum(!is.na(pension),na.rm = TRUE),
+            subsidio=sum(`encuesta_calidad.p_93`, na.rm=TRUE)/sum(subsidio==1,na.rm = TRUE),
+            salario=sum(`encuesta_calidad.p_121`, na.rm=TRUE)/sum(salario==1,na.rm = TRUE),
+            arriendo=sum(`encuesta_calidad.p_227`,na.rm=TRUE)/sum(arriendo==1,na.rm = TRUE),
+            total_gastos=sum(`encuesta_calidad.p_232`,na.rm=TRUE)/sum(total_gastos==1,na.rm = TRUE),
+            gasto_servicios=sum(`encuesta_calidad.p_240`,na.rm=TRUE)/sum(gasto_servicios==1,na.rm = TRUE),
+            gasto_hogar=sum(`encuesta_calidad.p_254`,na.rm=TRUE)/sum(gasto_hogar==1,na.rm = TRUE),
+            )
+db_ingresos
+db_ingresos[complete.cases(db_ingresos),]
+
+
+```
+/Escritura/
+```{r}
+write_excel_csv2(db_ingresos, "databases/db_ingresos.csv")
+write_excel_csv2(db_ingresos[complete.cases(db_ingresos),], "databases/db_ingresos_completecases.csv")
+```
+
+
+

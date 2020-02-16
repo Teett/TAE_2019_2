@@ -1,0 +1,54 @@
+---
+title: "Trabajo 1 TAE - Movilidad"
+author: "Nuestro equipo"
+date: "14/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Librerias 
+```{r}
+library(tidyverse)
+library(data.table)
+library(readxl)
+```
+Lectura de datos: 
+```{r}
+raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
+  as_tibble()
+
+diccionario <- read_excel("databases/diccionario_ecv_2016.xlsx")
+```
+
+Creacion de la base de datos
+```{r}
+  # Funcion para la moda
+getmode <- function(v) {
+  v <- v[!is.na(v)]
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+encuesta_movilidad<-raw_encuesta
+ 
+db_Movilidad<-encuesta_movilidad%>%
+  group_by(encuesta_calidad.barrio)%>%
+  summarize(n=n(),
+            pavimentacion=getmode(`encuesta_calidad.p_318`),
+            anden=getmode(`encuesta_calidad.p_319`),
+            normas_transito=getmode(`encuesta_calidad.p_320`),
+            cobertura=getmode(`encuesta_calidad.p_321`),
+            calidad_transporte=getmode(`encuesta_calidad.p_322`)
+            )
+db_Movilidad
+db_Movilidad[complete.cases(db_Movilidad),]
+```
+
+```{r}
+write_excel_csv2(db_Movilidad, "databases/db_Movilidad.csv")
+write_excel_csv2(db_Movilidad[complete.cases(db_Movilidad),], "databases/db_Movilidad_completecases.csv")
+```
+
