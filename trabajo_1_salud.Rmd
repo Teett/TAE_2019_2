@@ -117,6 +117,9 @@ db_salud <- encuesta_salud %>%
 
 db_salud
 db_salud[complete.cases(db_salud),]
+
+db_salud %>% 
+  arrange(desc(discapacidad))
 ```
 
 # Escritura

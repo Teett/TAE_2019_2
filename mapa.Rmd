@@ -26,16 +26,21 @@ library(raster)
 ```{r}
 raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
   as_tibble()
+
+political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
+Encoding(political@data$NOMBRE) <- "UTF-8"
+
 ```
 
-# Geocoding
+# Mapa
 
 ```{r}
-political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
-
 leaflet(data = political) %>% 
   addTiles() %>% 
   addProviderTiles(providers$OpenStreetMap) %>% 
-  addPolygons(fill = TRUE, stroke = TRUE, color = "#03F") %>% addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
+  addPolygons(fill = TRUE, stroke = TRUE, color = "#03F", 
+              label = as.character(political$NOMBRE),
+              popup = as.character(political$NOMBRE)) %>% 
+  addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
 ```
 
