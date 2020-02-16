@@ -18,10 +18,16 @@ library(readxl)
 ## Función para la moda
 
 ```{r}
-getmode <- function(v) {
-  v <- v[!is.na(v)]
-  uniqv <- unique(v)
-  uniqv[which.max(tabulate(match(v, uniqv)))]
+# Función para la moda
+getmode <- function(v, na.rm = TRUE) {
+  if(na.rm == TRUE) {
+    v <- v[!is.na(v)]
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+   } else {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+  }
 }
 ```
 
@@ -38,10 +44,71 @@ raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>%
 ```{r}
 db_escolaridad <- raw_encuesta %>% 
   group_by(encuesta_calidad.barrio) %>% 
-  summarize(n = n()
-            # Se ponen aca las variables representativas
+  summarize(n = n(),
+            proporcion_lectoescritura = sum(`encuesta_calidad.p_35` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_35`), na.rm = TRUE),
+            proporcion_escolaridad_actual = sum(`encuesta_calidad.p_36` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_36`), na.rm = TRUE),
+            estudio_ultimo_ano = sum(`encuesta_calidad.p_37` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_37`), na.rm = TRUE),
+            ultimo_nivel_estudio = getmode(`encuesta_calidad.p_45`, na.rm = TRUE),
+            tipo_institucion_educativa = getmode(`encuesta_calidad.p_49`, na.rm = TRUE)
           )
 ```
 
+# Establecimiento de tipos de datos
+
+```{r}
+db_escolaridad <- db_escolaridad %>% mutate(
+  ultimo_nivel_estudio = as.factor(ultimo_nivel_estudio),
+  tipo_institucion_educativa = as.factor(tipo_institucion_educativa)
+)
+```
+
+# Escritura de los datos
+
+```{r}
+write_excel_csv2(db_escolaridad, "databases/db_escolaridad.csv")
+```
+
+# Analisis preliminar de los datos
+
+## Medias y cuartiles
+
+```{r}
+summary(db_escolaridad)
+```
+
+## Desviaciones estandar
+
+```{r}
+
+```
+
+
+# Graficas
+
+```{r}
+ggplot(data = db_escolaridad) +
+  geom_histogram(
+    mapping = aes(x = proporcion_lectoescritura), 
+    binwidth = 0.02)
+
+ggplot(data = db_escolaridad) +
+  geom_histogram(
+    mapping = aes(x = proporcion_escolaridad_actual), 
+    binwidth = 0.02)
+
+ggplot(data = db_escolaridad) +
+  geom_histogram(
+    mapping = aes(x = estudio_ultimo_ano), 
+    binwidth = 0.01)
+
+ggplot(data = db_escolaridad) +
+  geom_bar(mapping = aes(x = ultimo_nivel_estudio))
+
+ggplot(data = db_escolaridad) +
+  geom_bar(mapping = aes(x = tipo_institucion_educativa))
+
+ggplot(data = db_escolaridad) +
+  geom_point(mapping = aes(x = proporcion_escolaridad_actual, y = proporcion_lectoescritura))
+```
 
 
