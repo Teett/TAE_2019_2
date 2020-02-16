@@ -1,0 +1,47 @@
+---
+title: "Trabajo 1 TAE - Salud"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Librerías
+
+```{r}
+library(tidyverse)
+library(data.table)
+library(readxl)
+```
+
+# Algunas funciones necesarias
+
+## Función para la moda
+
+```{r}
+getmode <- function(v) {
+  v <- v[!is.na(v)]
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+```
+
+
+# Lectura de datos
+
+```{r}
+raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
+  as_tibble()
+```
+
+# Creación de la base de datos
+
+```{r}
+db_escolaridad <- raw_encuesta %>% 
+  group_by(encuesta_calidad.barrio) %>% 
+  summarize(n = n()
+            # Se ponen aca las variables representativas
+          )
+```
+
+
+
