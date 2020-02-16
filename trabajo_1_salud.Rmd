@@ -34,7 +34,7 @@ raw_encuesta %>%
   arrange(n)
 ```
 
-# Necesitamos imputar datos
+# Podríamos necesitar imputar datos
 
 ```{r}
 raw_encuesta %>% 
@@ -112,7 +112,7 @@ db_salud <- encuesta_salud %>%
             calidad_urgencias = getmode(`encuesta_calidad.p_338`, na.rm = TRUE),
             hospitalizacion = mean(`encuesta_calidad.p_340`, na.rm = TRUE),
             calidad_hospitalizacion = getmode(`encuesta_calidad.p_341`, na.rm = TRUE)
-            ) %>% 
+            ) %>% ungroup() %>% 
   mutate(morbilidad_30 = replace_na(morbilidad_30, 0)) # Reemplazar NAs de morbilidad_30 por cero
 
 db_salud
@@ -120,6 +120,37 @@ db_salud[complete.cases(db_salud),]
 
 db_salud %>% 
   arrange(desc(discapacidad))
+```
+
+# Estadística descriptiva
+
+```{r}
+factors <- c("encuesta_calidad.barrio", "encuesta_calidad.comuna", "calidad_salud", "motivo_negacion",
+             "calidad_prevencion", "calidad_medico_general", "calidad_medico_especialista",
+             "calidad_urgencias", "calidad_hospitalizacion")
+
+db_salud %>% 
+  mutate_at(factors, as_factor)
+```
+
+
+## Medias y cuartiles
+
+```{r}
+summary(db_salud)
+```
+
+## Desviaciones estandar
+
+```{r}
+
+```
+
+# Graficas
+
+```{r}
+library(GGally)
+ggpairs("", aes(alpha = 0.4))
 ```
 
 # Escritura
