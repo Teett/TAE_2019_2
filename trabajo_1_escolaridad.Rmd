@@ -86,29 +86,8 @@ summary(db_escolaridad)
 # Graficas
 
 ```{r}
-ggplot(data = db_escolaridad) +
-  geom_histogram(
-    mapping = aes(x = proporcion_lectoescritura), 
-    binwidth = 0.02)
-
-ggplot(data = db_escolaridad) +
-  geom_histogram(
-    mapping = aes(x = proporcion_escolaridad_actual), 
-    binwidth = 0.02)
-
-ggplot(data = db_escolaridad) +
-  geom_histogram(
-    mapping = aes(x = estudio_ultimo_ano), 
-    binwidth = 0.01)
-
-ggplot(data = db_escolaridad) +
-  geom_bar(mapping = aes(x = ultimo_nivel_estudio))
-
-ggplot(data = db_escolaridad) +
-  geom_bar(mapping = aes(x = tipo_institucion_educativa))
-
-ggplot(data = db_escolaridad) +
-  geom_point(mapping = aes(x = proporcion_escolaridad_actual, y = proporcion_lectoescritura))
+library(GGally)
+ggpairs(db_escolaridad[, 3:7], aes(alpha = 0.4))
 ```
 
-
+Mapa de calor
