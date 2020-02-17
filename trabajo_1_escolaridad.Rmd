@@ -7,7 +7,7 @@ editor_options:
 
 # Librerías
 
-```{r}
+```{r message = FALSE, warning = FALSE}
 library(tidyverse)
 library(data.table)
 library(readxl)
@@ -77,21 +77,29 @@ write_excel_csv2(db_escolaridad, "databases/db_escolaridad.csv")
 * **ultimo_nivel_estudio:** representa la moda de cada barrio extraida sobre el nivel de estudio de los hogares encuestados. Esta pregunta es extraída mediante el cálculo de la moda sobre la pregunta 45.
 * **tipo_institucion_educativa**: se extrae mediante el calculo de la moda de cada barrio a sobre la pregunta 49. Representa el tipo de institución educativa que predominante en la cuál los encuestados estudiaron su último curso o en la que están estudiando actualmente.
 
+Es importante considerar que la variable "edad_promedio" no necesariamente hace referencia a la dimensión de escolaridad, sin embargo, se quiere realizar un contraste entre la variable "edad_promedio" y las demás variables para extraer información y hacer validaciones empíricas.
+
 # Analisis preliminar de los datos
 
-## Medias y cuartiles
+## Medias, cuartiles y desviaciones estándar
 
 ```{r}
 summary(db_escolaridad)
 ```
 
-## Desviaciones estandar
+#### Desviaciones estándar
 
-```{r}
+``` {r}
 db_escolaridad %>% select_if(is.numeric) %>% 
   apply(2, sd)
+
 ```
 
+Dada la información sobre las medias arrojada para cada variable, hay que resaltar que la proporción de personas con habilidades lecto-escritoras es alta con un `r mean(db_escolaridad$proporcion_lectoescritura)`, la cual es una cifra positiva pues muestra que en la población no hay analfabetismo crítico.
+
+Por otro lado, las proporción de personas que estudiaron en el último año tambien es baja, pero no se debe concluir que esto es necesariamente negativo. Cabe la posibilidad que varias personas en un determinado barrio sean trabajadores y por tanto no dedican mas tiempo al estudio a partir de cierto momento de su vida.
+
+Por otro lado, note que al extraer el último nivel de estudio aprobado predominante en cada barrio, se encuentra que las clases mas representativas corresponden a Media Académica o Normalista y a Educación Primaria. Sin embargo, los estudios universitarios son predominantes en `r  db_escolaridad %>% filter(ultimo_nivel_estudio == 7) %>% count()` de los `r nrow(db_escolaridad)` barrios, sin embargo esto sigue siendo una minoría dentro de la población de la ciudad.
 
 # Graficas
 
@@ -100,6 +108,11 @@ db_escolaridad %>% select_if(is.numeric) %>%
 ```{r}
 ggpairs(data = db_escolaridad, columns = 2:ncol(db_escolaridad))
 ```
+
+De la gráfica anterior, se debe resaltar significativamente las correlaciones entre las variables "edad_promedio" con las variables "proporcion_lectoescritura" y "proporcion_escolaridad_actual". Note que la "edad_promedio" esta correlacionada de manera directa con la variable "proporcion_lectoescritura" y de manera inversa con la variable "proporcion_escolaridad_actual". Esta información que se obtiene coincide con el conocimiento epírico, pues por un lado, las personas con mayor edad tienen mas probabilidad de tener como mínimo una educación primaria, obteniendo así mas habilidades lecto-escritoras, mientras que por otro lado a medida que las personas envejecen dejan de educarse y pasan a ambientes mas laborales.
+
+Por otro lado, note que en los barrios las personas tienen tendencia a educarse en establecimientos de índole pública debido a su fácil acceso.
+
 
 ## Valores tipicos
 
@@ -120,6 +133,11 @@ ggplot(data = db_escolaridad,
   geom_histogram(binwidth = 0.0005)
 ```
 
+```{r}
+ggplot(data = db_escolaridad) +
+  geom_histogram(mapping = aes(x = edad_promedio)) +
+  facet_grid(rows = vars(ultimo_nivel_estudio))
+```
 
 
 
