@@ -11,6 +11,7 @@ editor_options:
 library(tidyverse)
 library(data.table)
 library(readxl)
+library(GGally)
 ```
 
 # Algunas funciones necesarias
@@ -40,11 +41,10 @@ raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>%
 ```
 
 # Creación de la base de datos
-
 ```{r}
 db_escolaridad <- raw_encuesta %>% 
   group_by(encuesta_calidad.barrio) %>% 
-  summarize(n = n(),
+  summarize(edad_promedio = mean(`encuesta_calidad.p_18`, na.rm = TRUE),
             proporcion_lectoescritura = sum(`encuesta_calidad.p_35` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_35`), na.rm = TRUE),
             proporcion_escolaridad_actual = sum(`encuesta_calidad.p_36` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_36`), na.rm = TRUE),
             estudio_ultimo_ano = sum(`encuesta_calidad.p_37` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_37`), na.rm = TRUE),
@@ -68,6 +68,15 @@ db_escolaridad <- db_escolaridad %>% mutate(
 write_excel_csv2(db_escolaridad, "databases/db_escolaridad.csv")
 ```
 
+# Descripcion de las variables seleccionadas
+
+* **edad_promedio:** se calcula como el promedio de los años cumplidos de los encuestados calculando dicho promedio para cada barrio.
+* **proporcion_lectoescritura:** esta variable se construye a partir de la pregunta 35. La variable se calcula como la proporción de personas que pueden leer y escribir más de un parrafo con respecto al total de personas que respondieron dicha pregunta. Esta proporción se calcula a nivel de cada barrio.
+* **proporcion_escolaridad_actual:** esta variable es un derivado de la pregunta 36. Esta variable representa la proporción de personas que están estudiando en el momento respecto al total de personas que respondieron esta pregunta para cada barrio.
+* **esudio_ultimo_ano:** Se calcula como la proporción de personas que estudian en el ultimo año respecto al total de personas que respondieron la pregunta 37 de manera efectiva.
+* **ultimo_nivel_estudio:** representa la moda de cada barrio extraida sobre el nivel de estudio de los hogares encuestados. Esta pregunta es extraída mediante el cálculo de la moda sobre la pregunta 45.
+* **tipo_institucion_educativa**: se extrae mediante el calculo de la moda de cada barrio a sobre la pregunta 49. Representa el tipo de institución educativa que predominante en la cuál los encuestados estudiaron su último curso o en la que están estudiando actualmente.
+
 # Analisis preliminar de los datos
 
 ## Medias y cuartiles
@@ -79,36 +88,40 @@ summary(db_escolaridad)
 ## Desviaciones estandar
 
 ```{r}
-
+db_escolaridad %>% select_if(is.numeric) %>% 
+  apply(2, sd)
 ```
 
 
 # Graficas
 
+## Correlaciones y análisis de distribuciones
+
+```{r}
+ggpairs(data = db_escolaridad, columns = 2:ncol(db_escolaridad))
+```
+
+## Valores tipicos
+
 ```{r}
 ggplot(data = db_escolaridad) +
-  geom_histogram(
-    mapping = aes(x = proporcion_lectoescritura), 
-    binwidth = 0.02)
-
-ggplot(data = db_escolaridad) +
-  geom_histogram(
-    mapping = aes(x = proporcion_escolaridad_actual), 
-    binwidth = 0.02)
-
-ggplot(data = db_escolaridad) +
-  geom_histogram(
-    mapping = aes(x = estudio_ultimo_ano), 
-    binwidth = 0.01)
-
-ggplot(data = db_escolaridad) +
-  geom_bar(mapping = aes(x = ultimo_nivel_estudio))
-
-ggplot(data = db_escolaridad) +
-  geom_bar(mapping = aes(x = tipo_institucion_educativa))
-
-ggplot(data = db_escolaridad) +
-  geom_point(mapping = aes(x = proporcion_escolaridad_actual, y = proporcion_lectoescritura))
+  geom_histogram(mapping = aes(x = proporcion_lectoescritura), binwidth = 0.002)
 ```
+
+```{r}
+ggplot(data = db_escolaridad,
+       mapping = aes(x = proporcion_escolaridad_actual)) +
+  geom_histogram(binwidth = 0.002)
+```
+
+```{r}
+ggplot(data = db_escolaridad,
+       mapping = aes(x = estudio_ultimo_ano)) +
+  geom_histogram(binwidth = 0.0005)
+```
+
+
+
+
 
 
