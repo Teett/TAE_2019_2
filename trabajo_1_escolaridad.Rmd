@@ -12,6 +12,8 @@ library(tidyverse)
 library(data.table)
 library(readxl)
 library(GGally)
+library(leaflet)
+library(raster)
 ```
 
 # Algunas funciones necesarias
@@ -44,7 +46,8 @@ raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>%
 ```{r}
 db_escolaridad <- raw_encuesta %>% 
   group_by(encuesta_calidad.barrio) %>% 
-  summarize(edad_promedio = mean(`encuesta_calidad.p_18`, na.rm = TRUE),
+  summarize(n = n(),
+            edad_promedio = mean(`encuesta_calidad.p_18`, na.rm = TRUE),
             proporcion_lectoescritura = sum(`encuesta_calidad.p_35` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_35`), na.rm = TRUE),
             proporcion_escolaridad_actual = sum(`encuesta_calidad.p_36` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_36`), na.rm = TRUE),
             estudio_ultimo_ano = sum(`encuesta_calidad.p_37` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_37`), na.rm = TRUE),
@@ -60,7 +63,73 @@ db_escolaridad <- db_escolaridad %>% mutate(
 rownames(db_escolaridad) <- db_escolaridad[, 1]
 db_escolaridad[, 1] <- NULL
 
+
+rownames(db_escolaridad) <- rownames(db_escolaridad) %>% 
+  str_replace("ANDALUCIA", "ANDALUCÍA") %>% 
+  str_replace("Nº 2", "NO.2") %>% 
+  str_replace("Nº 1", "NO.1") %>% 
+  str_replace("Nº 3", "NO.3") %>%
+  str_replace("AREA EXPANSION", "ÁREA DE EXPANSIÓN") %>% 
+  str_replace("DELA", "DE LA") %>% 
+  str_replace("EXPANCION", "EXPANSIÓN") %>% 
+  str_replace("AREA", "ÁREA") %>% 
+  str_replace("CRISTOBAL", "CRISTÓBAL") %>% 
+  str_replace("BOMBONA", "BOMBONÁ") %>% 
+  str_replace("LA ASOMADERA", "ASOMADERA") %>%
+  str_replace("BELALCAZAR", "BELALCÁZAR") %>% 
+  str_replace("CALAZANS", "CALASANZ") %>% 
+  str_replace("COLON", "COLÓN") %>% 
+  str_replace("MIRA FLORES", "MIRAFLORES") %>% 
+  str_replace("BARRIO FACULTAD DE MINAS", "FACULTAD DE MINAS") %>% 
+  str_replace("CABECERA SAN ANT DE PR.", "SAN ANTONIO DE PRADO") %>% 
+  str_replace("CARLOS E RESTREPO", "CARLOS E. RESTREPO") %>% 
+  str_replace("URQUITA", "URQUITÁ") %>% 
+  str_replace("LOS CERROS EL VERJEL", "LOS CERROS EL VERGEL") %>% 
+  str_replace("CAYCEDO", "CAICEDO") %>% 
+  str_replace("VALDES", "VALDÉS") %>% 
+  str_replace("CERRO EL VOLADOR", "B. CERRO EL VOLADOR") %>% 
+  str_replace("MOSCU", "MOSCÚ") %>% 
+  str_replace("JOSELA", "JOSÉ LA") %>%
+  str_replace("JOSE", "JOSÉ") %>% 
+  str_replace("EL YOLOMBO", "YOLOMBO") %>% 
+  str_replace("PIEDRAS BLANCAS", "PIEDRAS BLANCAS - MATASANO") %>% 
+  str_replace("BASILIA", "BRASILIA") %>% 
+  str_replace("VILLA TINA", "VILLATINA") %>% 
+  str_replace("LILIAM", "LILLIAM") %>% 
+  str_replace("BOLIVAR", "BOLÍVAR") %>% 
+  str_replace("CORREGIMIENTO PALMITAS", "PALMITAS SECTOR CENTRAL") %>% 
+  str_replace("INES", "INÉS") %>% 
+  str_replace("FE", "FÉ") %>% 
+  str_replace("LUCIA", "LUCÍA") %>% 
+  str_replace("SABIO", "SAVIO") %>% 
+  str_replace("BERMEJAL- LOS ÁLAMOS", "BERMEJAL-LOS ÁLAMOS") %>% 
+  str_replace("BOLÍVARIANA", "BOLIVARIANA") %>% 
+  str_replace("CIUDADE LA NUEVO OCCIDENTE", "CIUDADE LA NUEVO OCCIDENTE") %>% 
+  str_replace("EL NOGAL - LOS ALMENDROS", "EL NOGAL-LOS ALMENDROS") %>% 
+  str_replace("JUAN XXIII - LA QUIEBRA", "JUAN XXIII LA QUIEBRA") %>% 
+  str_replace("PROGRESO", "EL PROGRESO") %>% 
+  str_replace("MARIA", "MARÍA") %>% 
+  str_replace("PLAYÓN", "PLAYON") %>% 
+  str_replace("EL SOCORRO / LA GABRIELA", "EL SOCORRO") %>% 
+  str_replace("FÉRRINI", "FERRINI") %>% 
+  str_replace("LA CANDE LARIA", "LA CANDELARIA") %>%
+  str_replace("EL PLAYON", "PLAYÓN") %>%
+  str_replace("IGUANA", "IGUANÁ") %>%
+  str_replace("MARÍA CANO - CARAMBOLAS", "MARÍA CANO-CARAMBOLAS") %>%
+  str_replace("DE ABURRA", "DEL ABURRÁ") %>%
+  str_replace("CABECERA SAN CRISTÓBAL", "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL") %>%
+  str_replace("BELALCAZAR", "BELALCÁZAR") %>%
+  str_replace("BELALCAZAR", "BELALCÁZAR") %>%
+  str_replace("BELALCAZAR", "BELALCÁZAR") %>%
+  str_replace("BELALCAZAR", "BELALCÁZAR") %>%
+  str_replace("BELALCAZAR", "BELALCÁZAR")
+    
+
 head(db_escolaridad)
+```
+# Corrección de los nombres de los barrios
+```{r}
+
 ```
 
 
@@ -182,7 +251,9 @@ summary(split_db_escolaridad$`6`)
 
 ```{r}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
+
 Encoding(political@data$NOMBRE) <- "UTF-8"
+political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
 
 leaflet(data = political) %>% 
   addTiles() %>% 
@@ -192,6 +263,25 @@ leaflet(data = political) %>%
               popup = as.character(political$NOMBRE)) %>% 
   addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
 ```
+
+```{r}
+nombres_mapa <- political$NOMBRE %>% sort()
+
+interseccion <- nombres_mapa %>% 
+  intersect(rownames(db_escolaridad))
+
+no_coinciden <- rownames(db_escolaridad)[!(rownames(db_escolaridad) %in% interseccion)]
+```
+
+```{r}
+no_coinciden
+```
+
+```{r}
+rownames(db_escolaridad)
+```
+
+
 
 
 
