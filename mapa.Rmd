@@ -38,7 +38,7 @@ Encoding(political@data$NOMBRE) <- "UTF-8"
 leaflet(data = political) %>% 
   addTiles() %>% 
   addProviderTiles(providers$OpenStreetMap) %>% 
-  addPolygons(fill = TRUE, stroke = TRUE, color = "#03F", 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = "#03F", 
               label = as.character(political$NOMBRE),
               popup = as.character(political$NOMBRE)) %>% 
   addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
