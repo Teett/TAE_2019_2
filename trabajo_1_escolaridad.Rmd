@@ -50,17 +50,20 @@ db_escolaridad <- raw_encuesta %>%
             estudio_ultimo_ano = sum(`encuesta_calidad.p_37` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_37`), na.rm = TRUE),
             ultimo_nivel_estudio = getmode(`encuesta_calidad.p_45`, na.rm = TRUE),
             tipo_institucion_educativa = getmode(`encuesta_calidad.p_49`, na.rm = TRUE)
-          )
-```
+          ) %>% as.data.frame()
 
-# Establecimiento de tipos de datos
-
-```{r}
 db_escolaridad <- db_escolaridad %>% mutate(
   ultimo_nivel_estudio = as.factor(ultimo_nivel_estudio),
   tipo_institucion_educativa = as.factor(tipo_institucion_educativa)
 )
+
+rownames(db_escolaridad) <- db_escolaridad[, 1]
+db_escolaridad[, 1] <- NULL
+
+head(db_escolaridad)
 ```
+
+
 
 # Escritura de los datos
 
@@ -92,7 +95,6 @@ summary(db_escolaridad)
 ``` {r}
 db_escolaridad %>% select_if(is.numeric) %>% 
   apply(2, sd)
-
 ```
 
 Dada la información sobre las medias arrojada para cada variable, hay que resaltar que la proporción de personas con habilidades lecto-escritoras es alta con un `r mean(db_escolaridad$proporcion_lectoescritura)`, la cual es una cifra positiva pues muestra que en la población no hay analfabetismo crítico.
@@ -106,7 +108,7 @@ Por otro lado, note que al extraer el último nivel de estudio aprobado predomin
 ## Correlaciones y análisis de distribuciones
 
 ```{r}
-ggpairs(data = db_escolaridad, columns = 2:ncol(db_escolaridad))
+ggpairs(data = db_escolaridad, columns = 1:ncol(db_escolaridad))
 ```
 
 De la gráfica anterior, se debe resaltar significativamente las correlaciones entre las variables "edad_promedio" con las variables "proporcion_lectoescritura" y "proporcion_escolaridad_actual". Note que la "edad_promedio" esta correlacionada de manera directa con la variable "proporcion_lectoescritura" y de manera inversa con la variable "proporcion_escolaridad_actual". Esta información que se obtiene coincide con el conocimiento epírico, pues por un lado, las personas con mayor edad tienen mas probabilidad de tener como mínimo una educación primaria, obteniendo así mas habilidades lecto-escritoras, mientras que por otro lado a medida que las personas envejecen dejan de educarse y pasan a ambientes mas laborales.
@@ -138,6 +140,45 @@ ggplot(data = db_escolaridad) +
   geom_histogram(mapping = aes(x = edad_promedio)) +
   facet_grid(rows = vars(ultimo_nivel_estudio))
 ```
+
+# Escalamiento de datos numéricos
+
+```{r}
+db_escolaridad_escalado<- data.frame(
+  scale(db_escolaridad %>% select_if(is.numeric)),
+  db_escolaridad %>% select_if(negate(is.numeric))
+)
+```
+
+# Aplicación de PCA
+
+# Agrupamiento Jerárquico OJOOOOOOOOO CORREGIR METRICA CATEGORICA
+
+```{r}
+cantidad_grupos <- 7
+
+distancia_numerico <- dist(db_escolaridad %>% select_if(is.numeric))
+distancia_categorico <- dist(db_escolaridad %>% select_if(negate(is.numeric)))
+
+distancia_consolidada <- distancia_numerico + distancia_categorico
+
+agrupamiento <- hclust(distancia_consolidada, method = "complete")
+
+arbol_corte <- cutree(agrupamiento, k = cantidad_grupos)
+
+
+split_db_escolaridad <- split(db_escolaridad, arbol_corte)
+
+```
+
+# Seleccion de los grupos
+
+```{r}
+summary(split_db_escolaridad$`1`)
+summary(split_db_escolaridad$`6`)
+```
+
+# Mapa de agrupamiento 
 
 
 
