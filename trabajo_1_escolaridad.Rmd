@@ -40,6 +40,19 @@ getmode <- function(v, na.rm = TRUE) {
 ```{r}
 raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
   as_tibble()
+
+raw_encuesta$encuesta_calidad.barrio <- raw_encuesta$encuesta_calidad.barrio %>% 
+  str_replace_all("CIUDADE LA NUEVO OCCIDENTE", "CABECERA SAN CRISTÓBAL")
+
+raw_encuesta$encuesta_calidad.barrio <- raw_encuesta$encuesta_calidad.barrio %>% 
+  str_replace_all("CABECERA ALTAVISTA", "ALTAVISTA") 
+
+raw_encuesta$encuesta_calidad.barrio <- raw_encuesta$encuesta_calidad.barrio %>% str_replace_all("PROGRESO  Nº 2", "PROGRESO") %>% unique() %>% sort()
+
+gsub("PROGRESO  Nº 2", "PROGRESO", raw_encuesta$encuesta_calidad.barrio) %>% unique() %>% sort()
+
+str_replace_all(raw_encuesta$encuesta_calidad.barrio, "PROGRESO  Nº 2", "PROGRESO") %>% unique() %>% sort()
+  
 ```
 
 # Creación de la base de datos
@@ -104,10 +117,9 @@ rownames(db_escolaridad) <- rownames(db_escolaridad) %>%
   str_replace("SABIO", "SAVIO") %>% 
   str_replace("BERMEJAL- LOS ÁLAMOS", "BERMEJAL-LOS ÁLAMOS") %>% 
   str_replace("BOLÍVARIANA", "BOLIVARIANA") %>% 
-  str_replace("CIUDADE LA NUEVO OCCIDENTE", "CIUDADE LA NUEVO OCCIDENTE") %>% 
   str_replace("EL NOGAL - LOS ALMENDROS", "EL NOGAL-LOS ALMENDROS") %>% 
   str_replace("JUAN XXIII - LA QUIEBRA", "JUAN XXIII LA QUIEBRA") %>% 
-  str_replace("PROGRESO", "EL PROGRESO") %>% 
+  str_replace("PROGRESO  Nº 2", "EL PROGRESO") %>% 
   str_replace("MARIA", "MARÍA") %>% 
   str_replace("PLAYÓN", "PLAYON") %>% 
   str_replace("EL SOCORRO / LA GABRIELA", "EL SOCORRO") %>% 
@@ -118,19 +130,18 @@ rownames(db_escolaridad) <- rownames(db_escolaridad) %>%
   str_replace("MARÍA CANO - CARAMBOLAS", "MARÍA CANO-CARAMBOLAS") %>%
   str_replace("DE ABURRA", "DEL ABURRÁ") %>%
   str_replace("CABECERA SAN CRISTÓBAL", "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL") %>%
-  str_replace("BELALCAZAR", "BELALCÁZAR") %>%
-  str_replace("BELALCAZAR", "BELALCÁZAR") %>%
-  str_replace("BELALCAZAR", "BELALCÁZAR") %>%
-  str_replace("BELALCAZAR", "BELALCÁZAR") %>%
+  str_replace("ALTAVISTA CENTRAL", "ALTAVISTA SECTOR CENTRAL") %>%
+  str_replace("SECTOR CENTRAL", "CENTRO ADMINISTRATIVO") %>%
+  str_replace("ALTAVISTA CENTRO ADMINISTRATIVO", "ALTAVISTA SECTOR CENTRAL") %>%
+  str_replace("SANTA ELENA CENTRO ADMINISTRATIVO", "SANTA ELENA SECTOR CENTRAL") %>%
+  str_replace("PALMITAS CENTRO ADMINISTRATIVO", "PALMITAS SECTOR CENTRAL") %>% 
+  str_replace("BELALCAZAR", "BELALCÁZAR") %>% 
+  str_replace("BELALCAZAR", "BELALCÁZAR") %>% 
   str_replace("BELALCAZAR", "BELALCÁZAR")
+
     
-
-head(db_escolaridad)
 ```
-# Corrección de los nombres de los barrios
-```{r}
 
-```
 
 
 
@@ -281,6 +292,13 @@ no_coinciden
 rownames(db_escolaridad)
 ```
 
+```{r}
+agrupamiento <- raw_encuesta %>% 
+  group_by(encuesta_calidad.barrio) %>% 
+  summarise(n = n())
+
+agrupamiento$encuesta_calidad.barrio
+```
 
 
 
