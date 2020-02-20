@@ -23,11 +23,18 @@ library(mltools)
 raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
   as_tibble()
 
+raw_encuesta$encuesta_calidad.barrio %>% unique() %>% sort()
+
 # Unificación de las estadísticas de los barrios "ALTAVISTA" y "CABECERA ALTAVISTA"
 
 raw_encuesta <- raw_encuesta %>% mutate(
   encuesta_calidad.barrio = case_when(
     encuesta_calidad.barrio == "CABECERA ALTAVISTA" ~ "ALTAVISTA",
+    encuesta_calidad.barrio == "CIUDADELA NUEVO OCCIDENTE" ~ "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "AREA DE EXPANCION SAN CRISTOBAL" ~ "ÁREA DE EXPANSIÓN SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "CABECERA SAN CRISTÓBAL" ~ "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "SAN CRISTOBAL" ~ "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "PROGRESO  Nº 2" ~ "PROGRESO",
     TRUE ~ encuesta_calidad.barrio
   )
 )
@@ -50,7 +57,7 @@ raw_encuesta <- data.frame(raw_encuesta, variables_categoricas_encoding)
 
 db_escolaridad <- raw_encuesta %>% 
   group_by(encuesta_calidad.barrio) %>% 
-  summarize(edad_promedio = mean(`encuesta_calidad.p_18`, na.rm = TRUE),
+  summarize(n = n(),edad_promedio = mean(`encuesta_calidad.p_18`, na.rm = TRUE),
             proporcion_lectoescritura = sum(`encuesta_calidad.p_35` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_35`), na.rm = TRUE),
             proporcion_escolaridad_actual = sum(`encuesta_calidad.p_36` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_36`), na.rm = TRUE),
             estudio_ultimo_ano = sum(`encuesta_calidad.p_37` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_37`), na.rm = TRUE),
@@ -80,10 +87,9 @@ rownames(db_escolaridad) <- rownames(db_escolaridad) %>%
   str_replace("Nº 2", "NO.2") %>% 
   str_replace("Nº 1", "NO.1") %>% 
   str_replace("Nº 3", "NO.3") %>%
-  str_replace("AREA EXPANSION", "ÁREA DE EXPANSIÓN") %>% 
+  str_replace("AREA EXPANSION", "ÁREA DE EXPANSIÓN") %>%
   str_replace("EXPANCION", "EXPANSIÓN") %>% 
   str_replace("AREA", "ÁREA") %>% 
-  str_replace("CRISTOBAL", "CRISTÓBAL") %>% 
   str_replace("BOMBONA", "BOMBONÁ") %>% 
   str_replace("LA ASOMADERA", "ASOMADERA") %>%
   str_replace("BELALCAZAR", "BELALCÁZAR") %>% 
@@ -133,8 +139,9 @@ rownames(db_escolaridad) <- rownames(db_escolaridad) %>%
   str_replace("PALMITAS CENTRO ADMINISTRATIVO", "PALMITAS SECTOR CENTRAL") %>%  
   str_replace("PROGRESO", "EL PROGRESO")
 
-db_escolaridad <- db_escolaridad[!rownames(db_escolaridad) %in% c("DESCONOCIDO"), ]
+# Eliminamos el barrio desconocido
 
+db_escolaridad <- db_escolaridad[!rownames(db_escolaridad) %in% c("DESCONOCIDO"), ]
 ```
 
 
@@ -241,8 +248,69 @@ plot(1:k_maximo, wss,
 ## Agrupamiento con $K$ óptimo 
 
 ```{r}
-agrupamiento_kmeans <- kmeans(datos, centers = 7, nstart = 10, iter.max = 15 )
+agrupamiento_kmeans <- kmeans(db_escolaridad_escalado, centers = 7, nstart = 10, iter.max = 15 )
 ```
+
+## Mapa para el agrupamiento mediante K-means
+
+```{r}
+political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
+
+nombres_mapa <- data.frame(political$NOMBRE)
+rownames(nombres_mapa) <- political$NOMBRE
+clusters_y_nombres <- data.frame(agrupamiento_kmeans$cluster)
+
+Encoding(political@data$NOMBRE) <- "UTF-8"
+political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
+
+leaflet(data = political) %>% 
+  addTiles() %>% 
+  addProviderTiles(providers$OpenStreetMap) %>% 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = colores, 
+              label = as.character(political$NOMBRE),
+              popup = as.character(political$NOMBRE)) %>% 
+  addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
+```
+
+```{r}
+nombres_mapa <- political$NOMBRE %>% sort()
+
+interseccion <- nombres_mapa %>% 
+  intersect(rownames(db_escolaridad))
+
+no_coinciden <- rownames(db_escolaridad)[!(rownames(db_escolaridad) %in% interseccion)]
+```
+
+```{r}
+no_coinciden
+```
+
+```{r}
+rownames(db_escolaridad)
+```
+
+```{r}
+nombres_mapa
+```
+
+
+```{r}
+agrupamiento <- raw_encuesta %>% 
+  group_by(encuesta_calidad.barrio) %>% 
+  summarise(n = n())
+
+agrupamiento$encuesta_calidad.barrio
+```
+
+
+
+
+
+
+
+
+
+
 
 # Agrupamiento Jerárquico
 
