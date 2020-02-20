@@ -41,18 +41,18 @@ getmode <- function(v, na.rm = TRUE) {
 raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
   as_tibble()
 
-raw_encuesta$encuesta_calidad.barrio <- raw_encuesta$encuesta_calidad.barrio %>% 
-  str_replace_all("CIUDADE LA NUEVO OCCIDENTE", "CABECERA SAN CRISTÓBAL")
+raw_encuesta <- raw_encuesta %>% mutate(
+  encuesta_calidad.barrio = case_when(
+    encuesta_calidad.barrio == "CABECERA ALTAVISTA" ~ "ALTAVISTA",
+    TRUE ~ encuesta_calidad.barrio
+  )
+)
 
-raw_encuesta$encuesta_calidad.barrio <- raw_encuesta$encuesta_calidad.barrio %>% 
-  str_replace_all("CABECERA ALTAVISTA", "ALTAVISTA") 
+# Factores
 
-raw_encuesta$encuesta_calidad.barrio <- raw_encuesta$encuesta_calidad.barrio %>% str_replace_all("PROGRESO  Nº 2", "PROGRESO") %>% unique() %>% sort()
+variables_categoricas <- raw_encuesta[, c("encuesta_calidad.barrio", "encuesta_calidad.p_45")]
 
-gsub("PROGRESO  Nº 2", "PROGRESO", raw_encuesta$encuesta_calidad.barrio) %>% unique() %>% sort()
-
-str_replace_all(raw_encuesta$encuesta_calidad.barrio, "PROGRESO  Nº 2", "PROGRESO") %>% unique() %>% sort()
-  
+variables_categoricas <- variables_categoricas %>% model.matrix(~., .)
 ```
 
 # Creación de la base de datos
@@ -65,12 +65,11 @@ db_escolaridad <- raw_encuesta %>%
             proporcion_escolaridad_actual = sum(`encuesta_calidad.p_36` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_36`), na.rm = TRUE),
             estudio_ultimo_ano = sum(`encuesta_calidad.p_37` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_37`), na.rm = TRUE),
             ultimo_nivel_estudio = getmode(`encuesta_calidad.p_45`, na.rm = TRUE),
-            tipo_institucion_educativa = getmode(`encuesta_calidad.p_49`, na.rm = TRUE)
+            proporcion_instituciones_publicas = sum(`encuesta_calidad.p_49` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_49`), na.rm = TRUE)
           ) %>% as.data.frame()
 
 db_escolaridad <- db_escolaridad %>% mutate(
-  ultimo_nivel_estudio = as.factor(ultimo_nivel_estudio),
-  tipo_institucion_educativa = as.factor(tipo_institucion_educativa)
+  ultimo_nivel_estudio = as.factor(ultimo_nivel_estudio)
 )
 
 rownames(db_escolaridad) <- db_escolaridad[, 1]
@@ -83,7 +82,6 @@ rownames(db_escolaridad) <- rownames(db_escolaridad) %>%
   str_replace("Nº 1", "NO.1") %>% 
   str_replace("Nº 3", "NO.3") %>%
   str_replace("AREA EXPANSION", "ÁREA DE EXPANSIÓN") %>% 
-  str_replace("DELA", "DE LA") %>% 
   str_replace("EXPANCION", "EXPANSIÓN") %>% 
   str_replace("AREA", "ÁREA") %>% 
   str_replace("CRISTOBAL", "CRISTÓBAL") %>% 
@@ -129,17 +127,15 @@ rownames(db_escolaridad) <- rownames(db_escolaridad) %>%
   str_replace("IGUANA", "IGUANÁ") %>%
   str_replace("MARÍA CANO - CARAMBOLAS", "MARÍA CANO-CARAMBOLAS") %>%
   str_replace("DE ABURRA", "DEL ABURRÁ") %>%
-  str_replace("CABECERA SAN CRISTÓBAL", "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL") %>%
   str_replace("ALTAVISTA CENTRAL", "ALTAVISTA SECTOR CENTRAL") %>%
   str_replace("SECTOR CENTRAL", "CENTRO ADMINISTRATIVO") %>%
   str_replace("ALTAVISTA CENTRO ADMINISTRATIVO", "ALTAVISTA SECTOR CENTRAL") %>%
   str_replace("SANTA ELENA CENTRO ADMINISTRATIVO", "SANTA ELENA SECTOR CENTRAL") %>%
-  str_replace("PALMITAS CENTRO ADMINISTRATIVO", "PALMITAS SECTOR CENTRAL") %>% 
-  str_replace("BELALCAZAR", "BELALCÁZAR") %>% 
-  str_replace("BELALCAZAR", "BELALCÁZAR") %>% 
-  str_replace("BELALCAZAR", "BELALCÁZAR")
+  str_replace("PALMITAS CENTRO ADMINISTRATIVO", "PALMITAS SECTOR CENTRAL") %>%  
+  str_replace("PROGRESO", "EL PROGRESO")
 
-    
+db_escolaridad <- db_escolaridad[!rownames(db_escolaridad) %in% c("DESCONOCIDO"), ]
+
 ```
 
 
@@ -291,6 +287,11 @@ no_coinciden
 ```{r}
 rownames(db_escolaridad)
 ```
+
+```{r}
+nombres_mapa
+```
+
 
 ```{r}
 agrupamiento <- raw_encuesta %>% 
