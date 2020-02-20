@@ -17,26 +17,6 @@ library(raster)
 library(mltools)
 ```
 
-# Algunas funciones necesarias
-
-## Función para la moda
-
-```{r}
-# Función para la moda
-
-getmode <- function(v, na.rm = TRUE) {
-  if(na.rm == TRUE) {
-    v <- v[!is.na(v)]
-   uniqv <- unique(v)
-   uniqv[which.max(tabulate(match(v, uniqv)))]
-   } else {
-   uniqv <- unique(v)
-   uniqv[which.max(tabulate(match(v, uniqv)))]
-  }
-}
-```
-
-
 # Lectura de datos
 
 ```{r}
@@ -196,7 +176,7 @@ Dada la información sobre las medias arrojada para cada variable, hay que resal
 
 Por otro lado, las proporción de personas que estudiaron en el último año tambien es baja, pero no se debe concluir que esto es necesariamente negativo. Cabe la posibilidad que varias personas en un determinado barrio sean trabajadores y por tanto no dedican mas tiempo al estudio a partir de cierto momento de su vida.
 
-Por otro lado, note que al extraer el último nivel de estudio aprobado predominante en cada barrio, se encuentra que las clases mas representativas corresponden a Media Académica o Normalista y a Educación Primaria. Sin embargo, los estudios universitarios son predominantes en `r  db_escolaridad %>% filter(ultimo_nivel_estudio == 7) %>% count()` de los `r nrow(db_escolaridad)` barrios, sin embargo esto sigue siendo una minoría dentro de la población de la ciudad.
+**>>>>>>> CONCLUIR NIVEL DE ESTUDIO AQUI <<<<<<<**
 
 # Graficas
 
@@ -230,13 +210,7 @@ ggplot(data = db_escolaridad,
   geom_histogram(binwidth = 0.0005)
 ```
 
-```{r}
-ggplot(data = db_escolaridad) +
-  geom_histogram(mapping = aes(x = edad_promedio)) +
-  facet_grid(rows = vars(ultimo_nivel_estudio))
-```
-
-# Escalamiento de datos numéricos
+# Escalamiento de datos
 
 ```{r}
 db_escolaridad_escalado <- scale(db_escolaridad)
@@ -275,7 +249,7 @@ agrupamiento_kmeans <- kmeans(datos, centers = 7, nstart = 10, iter.max = 15 )
 ```{r}
 cantidad_grupos <- 7
 
-distancia <- dist(db_escolaridad_escalado %>% select_if(is.numeric))
+distancia <- dist(db_escolaridad_escalado)
 agrupamiento <- hclust(distancia, method = "complete")
 arbol_corte <- cutree(agrupamiento, k = cantidad_grupos)
 
@@ -289,7 +263,7 @@ summary(split_db_escolaridad$`1`)
 summary(split_db_escolaridad$`6`)
 ```
 
-## Mapa geográfico usando el agrupamiento (agrupamiento jerárquico)
+## Mapa geográfico usando el agrupamiento (K-means)
 
 ```{r}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
