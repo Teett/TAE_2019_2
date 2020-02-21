@@ -17,6 +17,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(data.table)
 library(readxl)
+library(GGally)
+library(corrplot)
 ```
 
 # Lectura de datos
@@ -90,8 +92,13 @@ getmode <- function(v, na.rm = TRUE) {
    uniqv[which.max(tabulate(match(v, uniqv)))]
   }
 }
+```
 
 
+```{r}
+factors <- c("encuesta_calidad.barrio", "encuesta_calidad.comuna", "calidad_salud", "motivo_negacion",
+             "calidad_prevencion", "calidad_medico_general", "calidad_medico_especialista",
+             "calidad_urgencias", "calidad_hospitalizacion")
 
 db_salud <- encuesta_salud %>% 
   group_by(encuesta_calidad.barrio, encuesta_calidad.comuna) %>% 
@@ -113,49 +120,59 @@ db_salud <- encuesta_salud %>%
             hospitalizacion = mean(`encuesta_calidad.p_340`, na.rm = TRUE),
             calidad_hospitalizacion = getmode(`encuesta_calidad.p_341`, na.rm = TRUE)
             ) %>% ungroup() %>% 
-  mutate(morbilidad_30 = replace_na(morbilidad_30, 0)) # Reemplazar NAs de morbilidad_30 por cero
+  mutate(morbilidad_30 = replace_na(morbilidad_30, 0)) %>% 
+  mutate_at(factors, as_factor)
 
 db_salud
-db_salud[complete.cases(db_salud),]
+db_salud_complete <- db_salud[complete.cases(db_salud),]
 
-db_salud %>% 
-  arrange(desc(discapacidad))
 ```
 
 # Estadística descriptiva
-
-```{r}
-factors <- c("encuesta_calidad.barrio", "encuesta_calidad.comuna", "calidad_salud", "motivo_negacion",
-             "calidad_prevencion", "calidad_medico_general", "calidad_medico_especialista",
-             "calidad_urgencias", "calidad_hospitalizacion")
-
-db_salud %>% 
-  mutate_at(factors, as_factor)
-```
 
 
 ## Medias y cuartiles
 
 ```{r}
 summary(db_salud)
+
+db_salud %>% 
+  group_by(encuesta_calidad.barrio) %>% 
+  dplyr::summarize(media = mean(discapacidad), minimo = min(discapacidad), maximo = max(discapacidad)) %>% 
+  arrange(desc(maximo))
+
+db_salud %>% 
+  arrange(n) %>% 
+  View()
+library(tables)
+
+tabular(encuesta_calidad.barrio ~ discapacidad * (mean + min + max), data = db_salud_complete)
 ```
 
-## Desviaciones estandar
+-
+## Análisis de correlación
 
 ```{r}
+glimpse(db_salud)
 
+salud_cor <- db_salud %>%
+  select_if(is.numeric) %>% 
+  select(-n) %>%
+  .[complete.cases(.),] %>% 
+  cor()
+
+corrplot(salud_cor, type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, addCoef.col = "black")
+# Mapa gigante de correlación con factores y números
+db_salud %>% 
+  select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>%
+  ggpairs(aes(alpha = 0.4))
 ```
 
-# Graficas
-
-```{r}
-library(GGally)
-ggpairs("", aes(alpha = 0.4))
-```
+No se identifican correlaciones notorias entre las variables numéricas, se nota que hay ciertas variables con distribuciones marcadas, como el acceso a salud con una función de densidad de probabilidad muy similar a la distribución normal y otras variables con distribuciones con sesgos hacia la izquierda.
 
 # Escritura
 
-```{r}
+```{r, include = F}
 write_excel_csv2(db_salud, "databases/db_salud.csv")
 write_excel_csv2(db_salud[complete.cases(db_salud),], "databases/db_salud_completecases.csv")
 ```
