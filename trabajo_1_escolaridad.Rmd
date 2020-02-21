@@ -302,16 +302,6 @@ agrupamiento <- raw_encuesta %>%
 agrupamiento$encuesta_calidad.barrio
 ```
 
-
-
-
-
-
-
-
-
-
-
 # Agrupamiento Jerárquico
 
 ```{r}

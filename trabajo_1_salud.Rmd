@@ -25,7 +25,18 @@ library(corrplot)
 
 ```{r}
 raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
-  as_tibble()
+  as_tibble() %>% mutate(
+  encuesta_calidad.barrio = case_when(
+    encuesta_calidad.barrio == "CABECERA ALTAVISTA" ~ "ALTAVISTA",
+    encuesta_calidad.barrio == "CIUDADELA NUEVO OCCIDENTE" ~ "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "AREA DE EXPANCION SAN CRISTOBAL" ~ "ÁREA DE EXPANSIÓN SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "CABECERA SAN CRISTÓBAL" ~ "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "SAN CRISTOBAL" ~ "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "PROGRESO  Nº 2" ~ "PROGRESO",
+    TRUE ~ encuesta_calidad.barrio
+  )
+)
+
 ```
 
 # Número de encuestados por barrio
@@ -58,10 +69,13 @@ Con base en la cantidad de dos, se concluye que éste está asociado al "No", da
 
 ```{r}
 raw_encuesta %>% 
-select(paste0("encuesta_calidad.p_", 50:57)) %>% 
+select(paste0("encuesta_calidad.p_", 50:57)) %>% View()
   mutate_all(as_factor) %>% 
   summary()
 
+preguntas_categoricas <- c("encuesta_calidad.p_266", "encuesta_calidad.p_326", "encuesta_calidad.p_329", "encuesta_calidad.p_332", 
+                           "encuesta_calidad.p_335", "encuesta_calidad.p_338", "encuesta_calidad.p_341")
+  
 encuesta_salud <- raw_encuesta %>% 
   mutate(discapacidad = case_when(encuesta_calidad.p_50 == 1 ~ 1,
                                   encuesta_calidad.p_51 == 1 ~ 1,
@@ -71,7 +85,10 @@ encuesta_salud <- raw_encuesta %>%
                                   encuesta_calidad.p_55 == 1 ~ 1,
                                   encuesta_calidad.p_56 == 1 ~ 1,
                                   encuesta_calidad.p_57 == 1 ~ 1,
-                                  TRUE ~ 0))
+                                  TRUE ~ 0)) %>% 
+  mutate_at(vars(preguntas_categoricas), as_factor) %>%
+  fastDummies::dummy_cols(remove_selected_columns = TRUE, select_columns = preguntas_categoricas)
+
 ```
 
 # Agregación por barrio
@@ -96,29 +113,54 @@ getmode <- function(v, na.rm = TRUE) {
 
 
 ```{r}
-factors <- c("encuesta_calidad.barrio", "encuesta_calidad.comuna", "calidad_salud", "motivo_negacion",
-             "calidad_prevencion", "calidad_medico_general", "calidad_medico_especialista",
-             "calidad_urgencias", "calidad_hospitalizacion")
+factors <- c("encuesta_calidad.barrio", "encuesta_calidad.comuna")
 
 db_salud <- encuesta_salud %>% 
   group_by(encuesta_calidad.barrio, encuesta_calidad.comuna) %>% 
   summarize(n = n(),
             discapacidad = sum(discapacidad == 1, na.rm = TRUE)/sum(!is.na(discapacidad), na.rm = TRUE),
             acceso_salud = mean(`encuesta_calidad.p_265`, na.rm = TRUE),
-            calidad_salud = getmode(`encuesta_calidad.p_266`, na.rm = TRUE),
+            calidad_salud_1 = sum(`encuesta_calidad.p_266_1` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_266_1`), na.rm = TRUE),
+            calidad_salud_2 = sum(`encuesta_calidad.p_266_2` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_266_2`), na.rm = TRUE),
+            calidad_salud_3 = sum(`encuesta_calidad.p_266_3` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_266_3`), na.rm = TRUE),
+            calidad_salud_4 = sum(`encuesta_calidad.p_266_4` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_266_4`), na.rm = TRUE),
+            calidad_salud_5 = sum(`encuesta_calidad.p_266_5` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_266_5`), na.rm = TRUE),
             morbilidad_30 = sum(`encuesta_calidad.p_324` == 1, na.rm = TRUE)/
-              sum(!is.na(`encuesta_calidad.p_324`), na.rm = TRUE), 
-            motivo_negacion = getmode(`encuesta_calidad.p_324`, na.rm = TRUE),
+              sum(!is.na(`encuesta_calidad.p_324`), na.rm = TRUE),
+            motivo_negacion_1 = sum(`encuesta_calidad.p_326_1` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_326_1`), na.rm = TRUE),
+            motivo_negacion_2 = sum(`encuesta_calidad.p_326_2` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_326_2`), na.rm = TRUE),
+            motivo_negacion_3 = sum(`encuesta_calidad.p_326_3` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_326_3`), na.rm = TRUE),
+            motivo_negacion_4 = sum(`encuesta_calidad.p_326_4` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_326_4`), na.rm = TRUE),
+            motivo_negacion_5 = sum(`encuesta_calidad.p_326_5` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_326_5`), na.rm = TRUE),
+            motivo_negacion_6 = sum(`encuesta_calidad.p_326_6` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_326_6`), na.rm = TRUE),
+            motivo_negacion_7 = sum(`encuesta_calidad.p_326_7` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_326_7`), na.rm = TRUE),
+            motivo_negacion_8 = sum(`encuesta_calidad.p_326_8` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_326_8`), na.rm = TRUE),
+            motivo_negacion_9 = sum(`encuesta_calidad.p_326_9` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_326_9`), na.rm = TRUE),
             conteo_prevencion = median(`encuesta_calidad.p_328`, na.rm = TRUE),
-            calidad_prevencion = getmode(`encuesta_calidad.p_329`, na.rm = TRUE),
+            calidad_prevencion_1 = sum(`encuesta_calidad.p_329_1` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_329_1`), na.rm = TRUE),
+            calidad_prevencion_2 = sum(`encuesta_calidad.p_329_2` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_329_2`), na.rm = TRUE),
+            calidad_prevencion_3 = sum(`encuesta_calidad.p_329_3` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_329_3`), na.rm = TRUE),
+            calidad_prevencion_4 = sum(`encuesta_calidad.p_329_4` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_329_4`), na.rm = TRUE),
             consulta_medico_general = mean(`encuesta_calidad.p_331`, na.rm = TRUE),
-            calidad_medico_general = getmode(`encuesta_calidad.p_332`, na.rm = TRUE),
+            calidad_med_general_1 = sum(`encuesta_calidad.p_332_1` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_332_1`), na.rm = TRUE),
+            calidad_med_general_2 = sum(`encuesta_calidad.p_332_2` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_332_2`), na.rm = TRUE),
+            calidad_med_general_3 = sum(`encuesta_calidad.p_332_3` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_332_3`), na.rm = TRUE),
+            calidad_med_general_4 = sum(`encuesta_calidad.p_332_4` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_332_4`), na.rm = TRUE),
             consulta_medico_especialista = mean(`encuesta_calidad.p_334`, na.rm = TRUE),
-            calidad_medico_especialista = getmode(`encuesta_calidad.p_335`, na.rm = TRUE),
+            calidad_med_especial_1 = sum(`encuesta_calidad.p_335_1` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_335_1`), na.rm = TRUE),
+            calidad_med_especial_2 = sum(`encuesta_calidad.p_335_2` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_335_2`), na.rm = TRUE),
+            calidad_med_especial_3 = sum(`encuesta_calidad.p_335_3` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_335_3`), na.rm = TRUE),
+            calidad_med_especial_4 = sum(`encuesta_calidad.p_335_4` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_335_4`), na.rm = TRUE),
             consulta_urgencias = mean(`encuesta_calidad.p_337`, na.rm = TRUE),
-            calidad_urgencias = getmode(`encuesta_calidad.p_338`, na.rm = TRUE),
+            calidad_urgencias_1 = sum(`encuesta_calidad.p_338_1` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_338_1`), na.rm = TRUE),
+            calidad_urgencias_2 = sum(`encuesta_calidad.p_338_2` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_338_2`), na.rm = TRUE),
+            calidad_urgencias_3 = sum(`encuesta_calidad.p_338_3` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_338_3`), na.rm = TRUE),
+            calidad_urgencias_4 = sum(`encuesta_calidad.p_338_4` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_338_4`), na.rm = TRUE),
             hospitalizacion = mean(`encuesta_calidad.p_340`, na.rm = TRUE),
-            calidad_hospitalizacion = getmode(`encuesta_calidad.p_341`, na.rm = TRUE)
+            calidad_hospitalizacion_1 = sum(`encuesta_calidad.p_341_1` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_341_1`), na.rm = TRUE),
+            calidad_hospitalizacion_2 = sum(`encuesta_calidad.p_341_2` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_341_2`), na.rm = TRUE),
+            calidad_hospitalizacion_3 = sum(`encuesta_calidad.p_341_3` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_341_3`), na.rm = TRUE),
+            calidad_hospitalizacion_4 = sum(`encuesta_calidad.p_341_4` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_341_4`), na.rm = TRUE),
             ) %>% ungroup() %>% 
   mutate(morbilidad_30 = replace_na(morbilidad_30, 0)) %>% 
   mutate_at(factors, as_factor)
@@ -161,11 +203,13 @@ salud_cor <- db_salud %>%
   .[complete.cases(.),] %>% 
   cor()
 
-corrplot(salud_cor, type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, addCoef.col = "black")
-# Mapa gigante de correlación con factores y números
-db_salud %>% 
-  select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>%
-  ggpairs(aes(alpha = 0.4))
+corrplot(salud_cor, type = "upper", order = "hclust", tl.col = "black", tl.srt = 45)
+
+# Mapa gigante de correlación con factores y números Inviable por número de variables
+# db_salud %>% 
+#   select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>%
+#   ggpairs(aes(alpha = 0.4))
+
 ```
 
 No se identifican correlaciones notorias entre las variables numéricas, se nota que hay ciertas variables con distribuciones marcadas, como el acceso a salud con una función de densidad de probabilidad muy similar a la distribución normal y otras variables con distribuciones con sesgos hacia la izquierda.
