@@ -313,7 +313,6 @@ summary(split_db_escolaridad$`6`)
 
 ## Mapa geográfico usando el agrupamiento (Agrupamiento Jerárquico)
 
-
 ```{r}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
 Encoding(political@data$NOMBRE) <- "UTF-8"
@@ -335,6 +334,10 @@ mapa_grupos <- data.frame(
   nombre_barrio = vector_nombres, 
   grupo = vector_grupos
 )
+
+# Modificación manual de barrios repetidos 
+
+
 
 factpal <- colorFactor(rainbow(cantidad_grupos_jerarquico), mapa_grupos$grupo)
 
