@@ -23,8 +23,6 @@ library(mltools)
 raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
   as_tibble()
 
-raw_encuesta$encuesta_calidad.barrio %>% unique() %>% sort()
-
 # Unificación de las estadísticas de los barrios "ALTAVISTA" y "CABECERA ALTAVISTA"
 
 raw_encuesta <- raw_encuesta %>% mutate(
@@ -186,7 +184,11 @@ Por otro lado, las proporción de personas que estudiaron en el último año tam
 ## Correlaciones y análisis de distribuciones
 
 ```{r}
-ggpairs(data = db_escolaridad, columns = 1:ncol(db_escolaridad), mapping = aes(alpha = 0.5))
+ggpairs(data = db_escolaridad %>% 
+          dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna),
+        columns = 1:ncol(db_escolaridad %>% 
+          dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna)),
+        mapping = aes(alpha = 0.5))
 ```
 
 De la gráfica anterior, se debe resaltar significativamente las correlaciones entre las variables "edad_promedio" con las variables "proporcion_lectoescritura" y "proporcion_escolaridad_actual". Note que la "edad_promedio" esta correlacionada de manera directa con la variable "proporcion_lectoescritura" y de manera inversa con la variable "proporcion_escolaridad_actual". Esta información que se obtiene coincide con el conocimiento epírico, pues por un lado, las personas con mayor edad tienen mas probabilidad de tener como mínimo una educación primaria, obteniendo así mas habilidades lecto-escritoras, mientras que por otro lado a medida que las personas envejecen dejan de educarse y pasan a ambientes mas laborales.
@@ -229,11 +231,14 @@ db_escolaridad_escalado <- db_escolaridad %>%
 ## Selección del $K$ óptimo (Gráfica de codo)
 
 ```{r}
+datos_escalados_agrupamiento <- db_escolaridad_escalado %>% 
+  dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna)
+
 k_maximo <- 15
-datos_agrupamiento <- db_escolaridad_escalado %>% dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna)
+
 wss <- sapply(1:k_maximo, 
               function(k) {
-                kmeans(datos_agrupamiento, k, nstart = 10, iter.max = 15 )$tot.withinss
+                kmeans(datos_escalados_agrupamiento, k, nstart = 10, iter.max = 15 )$tot.withinss
               })
 
 plot(1:k_maximo, wss,
@@ -247,7 +252,7 @@ k_optimo_kmeans <- 8
 ## Agrupamiento con $K$ óptimo 
 
 ```{r}
-agrupamiento_kmeans <- kmeans(datos_agrupamiento, centers = k_optimo_kmeans, nstart = 10, iter.max = 15 )
+agrupamiento_kmeans <- kmeans(datos_escalados_agrupamiento, centers = k_optimo_kmeans, nstart = 10, iter.max = 15 )
 ```
 
 ## Mapa para el agrupamiento mediante K-means
@@ -260,33 +265,41 @@ political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "
 grupos_barrios <- data.frame(barrio_nombre = db_escolaridad$encuesta_calidad.barrio, grupo = agrupamiento_kmeans$cluster)
 nombres_mapa <- data.frame(nombre_barrio = political$NOMBRE)
 
-grupos_mapa <- merge(x = grupos_barrios, y = nombres_mapa, by.x = "barrio_nombre", by.y = "nombre_barrio")
-grupos_mapa <- grupos_mapa %>% mutate(grupo = as.factor(grupo))
+vector_nombres = c()
+vector_grupos = c()
 
-factpal <- colorFactor(rainbow(k_optimo_kmeans), grupos_mapa$grupo)
+for(nombre_mapa in nombres_mapa$nombre_barrio) {
+  grupo <- grupos_barrios[grupos_barrios$barrio_nombre == nombre_mapa, 2][1]
+  vector_nombres <- c(vector_nombres, nombre_mapa)
+  vector_grupos <- c(vector_grupos, grupo)
+}
+
+mapa_grupos <- data.frame(
+  nombre_barrio = vector_nombres, 
+  grupo = vector_grupos
+)
+
+factpal <- colorFactor(rainbow(k_optimo_kmeans), mapa_grupos$grupo)
 
 leaflet(data = political) %>% 
   addTiles() %>% 
   addProviderTiles(providers$OpenStreetMap) %>% 
-  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(grupos_mapa$grupo), 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos$grupo), 
               label = as.character(political$NOMBRE),
               popup = as.character(political$NOMBRE)) %>% 
   addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
-
-
-db_escolaridad$encuesta_calidad.barrio %>% unique()
-political$NOMBRE %>% unique()
 ```
+
 
 
 # Agrupamiento Jerárquico
 
 ```{r}
-cantidad_grupos <- 7
+cantidad_grupos_jerarquico <- 9
 
-distancia <- dist(db_escolaridad_escalado)
+distancia <- dist(datos_escalados_agrupamiento)
 agrupamiento <- hclust(distancia, method = "complete")
-arbol_corte <- cutree(agrupamiento, k = cantidad_grupos)
+arbol_corte <- cutree(agrupamiento, k = cantidad_grupos_jerarquico)
 
 split_db_escolaridad <- split(db_escolaridad, arbol_corte)
 ```
@@ -302,13 +315,35 @@ summary(split_db_escolaridad$`6`)
 
 
 ```{r}
-agrupamiento_kmeans$cluster
+political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
+Encoding(political@data$NOMBRE) <- "UTF-8"
+political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
+
+grupos_barrios <- data.frame(barrio_nombre = db_escolaridad$encuesta_calidad.barrio, grupo = arbol_corte)
+nombres_mapa <- data.frame(nombre_barrio = political$NOMBRE)
+
+vector_nombres = c()
+vector_grupos = c()
+
+for(nombre_mapa in nombres_mapa$nombre_barrio) {
+  grupo <- grupos_barrios[grupos_barrios$barrio_nombre == nombre_mapa, 2][1]
+  vector_nombres <- c(vector_nombres, nombre_mapa)
+  vector_grupos <- c(vector_grupos, grupo)
+}
+
+mapa_grupos <- data.frame(
+  nombre_barrio = vector_nombres, 
+  grupo = vector_grupos
+)
+
+factpal <- colorFactor(rainbow(cantidad_grupos_jerarquico), mapa_grupos$grupo)
+
+leaflet(data = political) %>% 
+  addTiles() %>% 
+  addProviderTiles(providers$OpenStreetMap) %>% 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos$grupo), 
+              label = as.character(political$NOMBRE),
+              popup = as.character(political$NOMBRE)) %>% 
+  addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
 ```
-
-```{r}
-interseccion <- intersect(db_escolaridad$encuesta_calidad.barrio, political$NOMBRE)
-
-db_escolaridad$encuesta_calidad.barrio[!(db_escolaridad$encuesta_calidad.barrio %in% interseccion)]
-```
-
 
