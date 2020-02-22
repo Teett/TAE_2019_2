@@ -220,10 +220,50 @@ ggplot(data = db_escolaridad,
 ```{r}
 db_escolaridad_escalado <- db_escolaridad %>% 
   mutate_at(vars(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna), scale)
+
+# Selección de las columnas para el agrupamiento
+
+datos_escalados_agrupamiento <- db_escolaridad_escalado %>% 
+  dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna)
 ```
 
-# Aplicación de PCA PCA AQUI <==================================
+# Aplicación de PCA 
 
+```{r}
+pca <- prcomp(datos_escalados_agrupamiento)
+summary(pca)
+```
+
+## Varianza explicada por cada componente
+
+```{r}
+porcentaje_exp <- 100 * (pca$sdev ^ 2) / sum(pca$sdev ^ 2)
+
+ggplot(data = data.frame(componente = factor(1:ncol(datos_escalados_agrupamiento)), porcentaje_exp)) +
+  geom_col(mapping = aes(x = componente, y = porcentaje_exp))
+
+suma_acumulada_porcentaje <- cumsum(porcentaje_exp)
+
+ggplot(data = data.frame(componente = factor(1:ncol(datos_escalados_agrupamiento)), suma_acumulada_porcentaje),
+        aes(x = componente, y = suma_acumulada_porcentaje, group = 1)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = 90, color = "red") +
+  geom_vline(xintercept = 7)
+
+```
+
+## Proyección respecto a las componentes principales
+
+```{r}
+datos_proyectados <- t(t(pca$rotation) %*% t(datos_escalados_agrupamiento))
+```
+
+Note que al tomar las primeras 7 componentes principales, se obtiene una varianza explicada del `r cumsum(porcentaje_exp)[7]`%, por tanto se tomaran únicamente las primeras 7 componentes principales.
+
+```{r}
+datos_agrupamiento <- datos_proyectados[, 1:7] %>% as_tibble()
+```
 
 
 # Agrupamiento mediante K-means
@@ -231,14 +271,11 @@ db_escolaridad_escalado <- db_escolaridad %>%
 ## Selección del $K$ óptimo (Gráfica de codo)
 
 ```{r}
-datos_escalados_agrupamiento <- db_escolaridad_escalado %>% 
-  dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna)
-
 k_maximo <- 15
 
 wss <- sapply(1:k_maximo, 
               function(k) {
-                kmeans(datos_escalados_agrupamiento, k, nstart = 10, iter.max = 15 )$tot.withinss
+                kmeans(datos_agrupamiento, k, nstart = 10, iter.max = 15 )$tot.withinss
               })
 
 plot(1:k_maximo, wss,
@@ -246,13 +283,13 @@ plot(1:k_maximo, wss,
      xlab="Número de grupos [K]",
      ylab="Total de suma de cuadrados intra-grupos")
 
-k_optimo_kmeans <- 8
+k_optimo_kmeans <- 5
 ```
 
 ## Agrupamiento con $K$ óptimo 
 
 ```{r}
-agrupamiento_kmeans <- kmeans(datos_escalados_agrupamiento, centers = k_optimo_kmeans, nstart = 10, iter.max = 15 )
+agrupamiento_kmeans <- kmeans(datos_agrupamiento, centers = k_optimo_kmeans, nstart = 10, iter.max = 15 )
 ```
 
 ## Mapa para el agrupamiento mediante K-means
@@ -262,14 +299,14 @@ political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
 Encoding(political@data$NOMBRE) <- "UTF-8"
 political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
 
-grupos_barrios <- data.frame(barrio_nombre = db_escolaridad$encuesta_calidad.barrio, grupo = agrupamiento_kmeans$cluster)
+grupos_barrios <- data.frame(barrio_nombre = db_escolaridad$encuesta_calidad.barrio, comuna_nombre = db_escolaridad$encuesta_calidad.comuna, grupo = agrupamiento_kmeans$cluster)
 nombres_mapa <- data.frame(nombre_barrio = political$NOMBRE)
 
 vector_nombres = c()
 vector_grupos = c()
 
 for(nombre_mapa in nombres_mapa$nombre_barrio) {
-  grupo <- grupos_barrios[grupos_barrios$barrio_nombre == nombre_mapa, 2][1]
+  grupo <- grupos_barrios[grupos_barrios$barrio_nombre == nombre_mapa, 3][1]
   vector_nombres <- c(vector_nombres, nombre_mapa)
   vector_grupos <- c(vector_grupos, grupo)
 }
@@ -295,9 +332,9 @@ leaflet(data = political) %>%
 # Agrupamiento Jerárquico
 
 ```{r}
-cantidad_grupos_jerarquico <- 9
+cantidad_grupos_jerarquico <- 7
 
-distancia <- dist(datos_escalados_agrupamiento)
+distancia <- dist(datos_agrupamiento)
 agrupamiento <- hclust(distancia, method = "complete")
 arbol_corte <- cutree(agrupamiento, k = cantidad_grupos_jerarquico)
 
@@ -318,14 +355,14 @@ political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
 Encoding(political@data$NOMBRE) <- "UTF-8"
 political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
 
-grupos_barrios <- data.frame(barrio_nombre = db_escolaridad$encuesta_calidad.barrio, grupo = arbol_corte)
+grupos_barrios <- data.frame(barrio_nombre = db_escolaridad$encuesta_calidad.barrio, comuna_nombre = db_escolaridad$encuesta_calidad.comuna, grupo = arbol_corte)
 nombres_mapa <- data.frame(nombre_barrio = political$NOMBRE)
 
 vector_nombres = c()
 vector_grupos = c()
 
 for(nombre_mapa in nombres_mapa$nombre_barrio) {
-  grupo <- grupos_barrios[grupos_barrios$barrio_nombre == nombre_mapa, 2][1]
+  grupo <- grupos_barrios[grupos_barrios$barrio_nombre == nombre_mapa, 3][1]
   vector_nombres <- c(vector_nombres, nombre_mapa)
   vector_grupos <- c(vector_grupos, grupo)
 }
