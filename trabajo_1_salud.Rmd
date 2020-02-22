@@ -75,7 +75,11 @@ select(paste0("encuesta_calidad.p_", 50:57)) %>% View()
 
 preguntas_categoricas <- c("encuesta_calidad.p_266", "encuesta_calidad.p_326", "encuesta_calidad.p_329", "encuesta_calidad.p_332", 
                            "encuesta_calidad.p_335", "encuesta_calidad.p_338", "encuesta_calidad.p_341")
-  
+```
+
+# Limpieza de los datos
+
+```{r}
 encuesta_salud <- raw_encuesta %>% 
   mutate(discapacidad = case_when(encuesta_calidad.p_50 == 1 ~ 1,
                                   encuesta_calidad.p_51 == 1 ~ 1,
@@ -87,17 +91,68 @@ encuesta_salud <- raw_encuesta %>%
                                   encuesta_calidad.p_57 == 1 ~ 1,
                                   TRUE ~ 0)) %>% 
   mutate_at(vars(preguntas_categoricas), as_factor) %>%
-  fastDummies::dummy_cols(remove_selected_columns = TRUE, select_columns = preguntas_categoricas)
-
+  fastDummies::dummy_cols(remove_selected_columns = TRUE, select_columns = preguntas_categoricas) %>% 
+  mutate(encuesta_calidad.barrio = str_replace(encuesta_calidad.barrio, "ANDALUCIA", "ANDALUCÍA") %>% 
+  str_replace("Nº 2", "NO.2") %>% 
+  str_replace("Nº 1", "NO.1") %>% 
+  str_replace("Nº 3", "NO.3") %>%
+  str_replace("AREA EXPANSION", "ÁREA DE EXPANSIÓN") %>%
+  str_replace("EXPANCION", "EXPANSIÓN") %>% 
+  str_replace("AREA", "ÁREA") %>% 
+  str_replace("BOMBONA", "BOMBONÁ") %>% 
+  str_replace("LA ASOMADERA", "ASOMADERA") %>%
+  str_replace("BELALCAZAR", "BELALCÁZAR") %>% 
+  str_replace("CALAZANS", "CALASANZ") %>% 
+  str_replace("COLON", "COLÓN") %>% 
+  str_replace("MIRA FLORES", "MIRAFLORES") %>% 
+  str_replace("BARRIO FACULTAD DE MINAS", "FACULTAD DE MINAS") %>% 
+  str_replace("CABECERA SAN ANT DE PR.", "SAN ANTONIO DE PRADO") %>% 
+  str_replace("CARLOS E RESTREPO", "CARLOS E. RESTREPO") %>% 
+  str_replace("URQUITA", "URQUITÁ") %>% 
+  str_replace("LOS CERROS EL VERJEL", "LOS CERROS EL VERGEL") %>% 
+  str_replace("CAYCEDO", "CAICEDO") %>% 
+  str_replace("VALDES", "VALDÉS") %>% 
+  str_replace("CERRO EL VOLADOR", "B. CERRO EL VOLADOR") %>% 
+  str_replace("MOSCU", "MOSCÚ") %>% 
+  str_replace("JOSELA", "JOSÉ LA") %>%
+  str_replace("JOSE", "JOSÉ") %>% 
+  str_replace("EL YOLOMBO", "YOLOMBO") %>% 
+  str_replace("PIEDRAS BLANCAS", "PIEDRAS BLANCAS - MATASANO") %>% 
+  str_replace("BASILIA", "BRASILIA") %>% 
+  str_replace("VILLA TINA", "VILLATINA") %>% 
+  str_replace("LILIAM", "LILLIAM") %>% 
+  str_replace("BOLIVAR", "BOLÍVAR") %>% 
+  str_replace("CORREGIMIENTO PALMITAS", "PALMITAS SECTOR CENTRAL") %>% 
+  str_replace("INES", "INÉS") %>% 
+  str_replace("FE", "FÉ") %>% 
+  str_replace("LUCIA", "LUCÍA") %>% 
+  str_replace("SABIO", "SAVIO") %>% 
+  str_replace("BERMEJAL- LOS ÁLAMOS", "BERMEJAL-LOS ÁLAMOS") %>% 
+  str_replace("BOLÍVARIANA", "BOLIVARIANA") %>% 
+  str_replace("EL NOGAL - LOS ALMENDROS", "EL NOGAL-LOS ALMENDROS") %>% 
+  str_replace("JUAN XXIII - LA QUIEBRA", "JUAN XXIII LA QUIEBRA") %>% 
+  str_replace("PROGRESO  Nº 2", "EL PROGRESO") %>% 
+  str_replace("MARIA", "MARÍA") %>% 
+  str_replace("PLAYÓN", "PLAYON") %>% 
+  str_replace("EL SOCORRO / LA GABRIELA", "EL SOCORRO") %>% 
+  str_replace("FÉRRINI", "FERRINI") %>% 
+  str_replace("LA CANDE LARIA", "LA CANDELARIA") %>%
+  str_replace("EL PLAYON", "PLAYÓN") %>%
+  str_replace("IGUANA", "IGUANÁ") %>%
+  str_replace("MARÍA CANO - CARAMBOLAS", "MARÍA CANO-CARAMBOLAS") %>%
+  str_replace("DE ABURRA", "DEL ABURRÁ") %>%
+  str_replace("ALTAVISTA CENTRAL", "ALTAVISTA SECTOR CENTRAL") %>%
+  str_replace("SECTOR CENTRAL", "CENTRO ADMINISTRATIVO") %>%
+  str_replace("ALTAVISTA CENTRO ADMINISTRATIVO", "ALTAVISTA SECTOR CENTRAL") %>%
+  str_replace("SANTA ELENA CENTRO ADMINISTRATIVO", "SANTA ELENA SECTOR CENTRAL") %>%
+  str_replace("PALMITAS CENTRO ADMINISTRATIVO", "PALMITAS SECTOR CENTRAL") %>%  
+  str_replace("PROGRESO", "EL PROGRESO")
+  )
 ```
 
-# Agregación por barrio
+# Funciones propias
 
 ```{r}
-encuesta_salud %>%
-  filter(`encuesta_calidad.p_324` == 1,
-         encuesta_calidad.barrio == "AREA DE EXPANCION SAN CRISTOBAL")
-
 # Función para la moda
 getmode <- function(v, na.rm = TRUE) {
   if(na.rm == TRUE) {
@@ -111,13 +166,14 @@ getmode <- function(v, na.rm = TRUE) {
 }
 ```
 
+# Construcción de la base de datos
 
 ```{r}
 factors <- c("encuesta_calidad.barrio", "encuesta_calidad.comuna")
 
-db_salud <- encuesta_salud %>% 
+db_salud <- encuesta_salud %>%
   group_by(encuesta_calidad.barrio, encuesta_calidad.comuna) %>% 
-  summarize(n = n(),
+  dplyr::summarize(n = n(),
             discapacidad = sum(discapacidad == 1, na.rm = TRUE)/sum(!is.na(discapacidad), na.rm = TRUE),
             acceso_salud = mean(`encuesta_calidad.p_265`, na.rm = TRUE),
             calidad_salud_1 = sum(`encuesta_calidad.p_266_1` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_266_1`), na.rm = TRUE),
@@ -162,7 +218,8 @@ db_salud <- encuesta_salud %>%
             calidad_hospitalizacion_3 = sum(`encuesta_calidad.p_341_3` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_341_3`), na.rm = TRUE),
             calidad_hospitalizacion_4 = sum(`encuesta_calidad.p_341_4` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_341_4`), na.rm = TRUE),
             ) %>% ungroup() %>% 
-  mutate(morbilidad_30 = replace_na(morbilidad_30, 0)) %>% 
+  mutate(morbilidad_30 = replace_na(morbilidad_30, 0),
+         encuesta_calidad.barrio = clean_barrios) %>% 
   mutate_at(factors, as_factor)
 
 db_salud
@@ -175,6 +232,8 @@ db_salud_complete <- db_salud[complete.cases(db_salud),]
 
 ## Medias y cuartiles
 
+Para la discapacidad
+
 ```{r}
 summary(db_salud)
 
@@ -182,16 +241,18 @@ db_salud %>%
   group_by(encuesta_calidad.barrio) %>% 
   dplyr::summarize(media = mean(discapacidad), minimo = min(discapacidad), maximo = max(discapacidad)) %>% 
   arrange(desc(maximo))
+```
 
+## ¿Cuáles son los barrios con menor representación?
+
+```{r}
 db_salud %>% 
   arrange(n) %>% 
   View()
-library(tables)
-
-tabular(encuesta_calidad.barrio ~ discapacidad * (mean + min + max), data = db_salud_complete)
 ```
 
--
+Luego de identificar los barrios con pocas observaciones, se asumirá que el muestreo fue realizado correctamente y por lo tanto consideramos inclusive las muestras con 4 observaciones como significativas, por lo que no se alterarán las conclusiones con respecto a los máximos y mínimos por cada variable.
+
 ## Análisis de correlación
 
 ```{r}
@@ -212,7 +273,14 @@ corrplot(salud_cor, type = "upper", order = "hclust", tl.col = "black", tl.srt =
 
 ```
 
+### Caso 1 - Sin one-hot encoding
+
 No se identifican correlaciones notorias entre las variables numéricas, se nota que hay ciertas variables con distribuciones marcadas, como el acceso a salud con una función de densidad de probabilidad muy similar a la distribución normal y otras variables con distribuciones con sesgos hacia la izquierda.
+
+### Caso 2 - Con one-hot encoding
+
+>>Pendiente<<
+
 
 # Escritura
 
