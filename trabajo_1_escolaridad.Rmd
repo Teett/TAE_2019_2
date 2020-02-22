@@ -58,34 +58,7 @@ raw_encuesta <- data.frame(raw_encuesta, variables_categoricas_encoding)
 #Agregación de las variables
 
 db_escolaridad <- raw_encuesta %>% 
-  group_by(encuesta_calidad.barrio) %>% 
-  summarize(n = n(),edad_promedio = mean(`encuesta_calidad.p_18`, na.rm = TRUE),
-            proporcion_lectoescritura = sum(`encuesta_calidad.p_35` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_35`), na.rm = TRUE),
-            proporcion_escolaridad_actual = sum(`encuesta_calidad.p_36` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_36`), na.rm = TRUE),
-            estudio_ultimo_ano = sum(`encuesta_calidad.p_37` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_37`), na.rm = TRUE),
-            proporcion_instituciones_publicas = sum(`encuesta_calidad.p_49` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_49`), na.rm = TRUE),
-            proporcion_nivel_estudio_0 = sum(`nivel_estudio_0` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_0`), na.rm = TRUE),
-            proporcion_nivel_estudio_1 = sum(`nivel_estudio_1` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_1`), na.rm = TRUE),
-            proporcion_nivel_estudio_2 = sum(`nivel_estudio_2` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_2`), na.rm = TRUE),
-            proporcion_nivel_estudio_3 = sum(`nivel_estudio_3` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_3`), na.rm = TRUE),
-            proporcion_nivel_estudio_4 = sum(`nivel_estudio_4` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_4`), na.rm = TRUE),
-            proporcion_nivel_estudio_5 = sum(`nivel_estudio_5` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_5`), na.rm = TRUE),
-            proporcion_nivel_estudio_6 = sum(`nivel_estudio_6` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_6`), na.rm = TRUE),
-            proporcion_nivel_estudio_7 = sum(`nivel_estudio_7` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_7`), na.rm = TRUE),
-            proporcion_nivel_estudio_8 = sum(`nivel_estudio_8` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_8`), na.rm = TRUE),
-            proporcion_nivel_estudio_9 = sum(`nivel_estudio_9` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_9`), na.rm = TRUE),
-            proporcion_nivel_estudio_10 = sum(`nivel_estudio_10` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_10`), na.rm = TRUE)
-          ) %>% as.data.frame()
-
-# Convertimos la columna que tiene el nombre del barrio en los rownames
-
-rownames(db_escolaridad) <- db_escolaridad[, 1]
-db_escolaridad[, 1] <- NULL
-
-# Corrección de nombres en los barrios
-
-rownames(db_escolaridad) <- rownames(db_escolaridad) %>% 
-  str_replace("ANDALUCIA", "ANDALUCÍA") %>% 
+  mutate(encuesta_calidad.barrio = str_replace(encuesta_calidad.barrio, "ANDALUCIA", "ANDALUCÍA") %>% 
   str_replace("Nº 2", "NO.2") %>% 
   str_replace("Nº 1", "NO.1") %>% 
   str_replace("Nº 3", "NO.3") %>%
@@ -140,10 +113,31 @@ rownames(db_escolaridad) <- rownames(db_escolaridad) %>%
   str_replace("SANTA ELENA CENTRO ADMINISTRATIVO", "SANTA ELENA SECTOR CENTRAL") %>%
   str_replace("PALMITAS CENTRO ADMINISTRATIVO", "PALMITAS SECTOR CENTRAL") %>%  
   str_replace("PROGRESO", "EL PROGRESO")
+  ) %>% 
+  group_by(encuesta_calidad.barrio, encuesta_calidad.comuna) %>% 
+  summarize(n = n(), edad_promedio = mean(`encuesta_calidad.p_18`, na.rm = TRUE),
+            proporcion_lectoescritura = sum(`encuesta_calidad.p_35` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_35`), na.rm = TRUE),
+            proporcion_escolaridad_actual = sum(`encuesta_calidad.p_36` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_36`), na.rm = TRUE),
+            estudio_ultimo_ano = sum(`encuesta_calidad.p_37` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_37`), na.rm = TRUE),
+            proporcion_instituciones_publicas = sum(`encuesta_calidad.p_49` == 1, na.rm = TRUE) / sum(!is.na(`encuesta_calidad.p_49`), na.rm = TRUE),
+            proporcion_nivel_estudio_0 = sum(`nivel_estudio_0` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_0`), na.rm = TRUE),
+            proporcion_nivel_estudio_1 = sum(`nivel_estudio_1` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_1`), na.rm = TRUE),
+            proporcion_nivel_estudio_2 = sum(`nivel_estudio_2` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_2`), na.rm = TRUE),
+            proporcion_nivel_estudio_3 = sum(`nivel_estudio_3` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_3`), na.rm = TRUE),
+            proporcion_nivel_estudio_4 = sum(`nivel_estudio_4` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_4`), na.rm = TRUE),
+            proporcion_nivel_estudio_5 = sum(`nivel_estudio_5` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_5`), na.rm = TRUE),
+            proporcion_nivel_estudio_6 = sum(`nivel_estudio_6` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_6`), na.rm = TRUE),
+            proporcion_nivel_estudio_7 = sum(`nivel_estudio_7` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_7`), na.rm = TRUE),
+            proporcion_nivel_estudio_8 = sum(`nivel_estudio_8` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_8`), na.rm = TRUE),
+            proporcion_nivel_estudio_9 = sum(`nivel_estudio_9` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_9`), na.rm = TRUE),
+            proporcion_nivel_estudio_10 = sum(`nivel_estudio_10` == 1, na.rm = TRUE) / sum(!is.na(`nivel_estudio_10`), na.rm = TRUE)
+          ) %>% as_tibble()
 
 # Eliminamos el barrio desconocido
 
-db_escolaridad <- db_escolaridad[!rownames(db_escolaridad) %in% c("DESCONOCIDO"), ]
+db_escolaridad <- db_escolaridad %>% 
+  filter(encuesta_calidad.barrio != "DESCONOCIDO")
+
 ```
 
 
@@ -222,7 +216,8 @@ ggplot(data = db_escolaridad,
 # Escalamiento de datos
 
 ```{r}
-db_escolaridad_escalado <- scale(db_escolaridad)
+db_escolaridad_escalado <- db_escolaridad %>% 
+  mutate_at(vars(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna), scale)
 ```
 
 # Aplicación de PCA PCA AQUI <==================================
@@ -235,10 +230,10 @@ db_escolaridad_escalado <- scale(db_escolaridad)
 
 ```{r}
 k_maximo <- 15
-datos <- db_escolaridad_escalado
+datos_agrupamiento <- db_escolaridad_escalado %>% dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna)
 wss <- sapply(1:k_maximo, 
               function(k) {
-                kmeans(datos, k, nstart = 10, iter.max = 15 )$tot.withinss
+                kmeans(datos_agrupamiento, k, nstart = 10, iter.max = 15 )$tot.withinss
               })
 
 plot(1:k_maximo, wss,
@@ -246,31 +241,29 @@ plot(1:k_maximo, wss,
      xlab="Número de grupos [K]",
      ylab="Total de suma de cuadrados intra-grupos")
 
-k_optimo_kmeans <- 9
+k_optimo_kmeans <- 8
 ```
 
 ## Agrupamiento con $K$ óptimo 
 
 ```{r}
-agrupamiento_kmeans <- kmeans(db_escolaridad_escalado, centers = k_optimo_kmeans, nstart = 10, iter.max = 15 )
+agrupamiento_kmeans <- kmeans(datos_agrupamiento, centers = k_optimo_kmeans, nstart = 10, iter.max = 15 )
 ```
 
 ## Mapa para el agrupamiento mediante K-means
 
 ```{r}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
+Encoding(political@data$NOMBRE) <- "UTF-8"
+political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
 
-grupos_barrios <- data.frame(barrio_nombre = rownames(db_escolaridad), grupo = agrupamiento_kmeans$cluster)
+grupos_barrios <- data.frame(barrio_nombre = db_escolaridad$encuesta_calidad.barrio, grupo = agrupamiento_kmeans$cluster)
 nombres_mapa <- data.frame(nombre_barrio = political$NOMBRE)
 
 grupos_mapa <- merge(x = grupos_barrios, y = nombres_mapa, by.x = "barrio_nombre", by.y = "nombre_barrio")
 grupos_mapa <- grupos_mapa %>% mutate(grupo = as.factor(grupo))
 
 factpal <- colorFactor(rainbow(k_optimo_kmeans), grupos_mapa$grupo)
-
-Encoding(political@data$NOMBRE) <- "UTF-8"
-
-political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
 
 leaflet(data = political) %>% 
   addTiles() %>% 
@@ -279,6 +272,10 @@ leaflet(data = political) %>%
               label = as.character(political$NOMBRE),
               popup = as.character(political$NOMBRE)) %>% 
   addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
+
+
+db_escolaridad$encuesta_calidad.barrio %>% unique()
+political$NOMBRE %>% unique()
 ```
 
 
@@ -303,24 +300,15 @@ summary(split_db_escolaridad$`6`)
 
 ## Mapa geográfico usando el agrupamiento (Agrupamiento Jerárquico)
 
-```{r}
-political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
-
-Encoding(political@data$NOMBRE) <- "UTF-8"
-political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
-
-leaflet(data = political) %>% 
-  addTiles() %>% 
-  addProviderTiles(providers$OpenStreetMap) %>% 
-  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = "#03F", 
-              label = as.character(political$NOMBRE),
-              popup = as.character(political$NOMBRE)) %>% 
-  addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
-```
-
 
 ```{r}
 agrupamiento_kmeans$cluster
+```
+
+```{r}
+interseccion <- intersect(db_escolaridad$encuesta_calidad.barrio, political$NOMBRE)
+
+db_escolaridad$encuesta_calidad.barrio[!(db_escolaridad$encuesta_calidad.barrio %in% interseccion)]
 ```
 
 
