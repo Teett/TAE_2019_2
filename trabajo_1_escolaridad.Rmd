@@ -48,10 +48,12 @@ variables_categoricas <- raw_encuesta[, c("encuesta_calidad.p_45")] %>% mutate(
 )
 
 variables_categoricas_encoding <- one_hot(as.data.table(variables_categoricas))
+
 raw_encuesta <- data.frame(raw_encuesta, variables_categoricas_encoding)
 ```
 
 # Creación de la base de datos
+
 ```{r}
 #Agregación de las variables
 
@@ -243,12 +245,14 @@ plot(1:k_maximo, wss,
      type="b", pch = 19, frame = FALSE, 
      xlab="Número de grupos [K]",
      ylab="Total de suma de cuadrados intra-grupos")
+
+k_optimo_kmeans <- 9
 ```
 
 ## Agrupamiento con $K$ óptimo 
 
 ```{r}
-agrupamiento_kmeans <- kmeans(db_escolaridad_escalado, centers = 7, nstart = 10, iter.max = 15 )
+agrupamiento_kmeans <- kmeans(db_escolaridad_escalado, centers = k_optimo_kmeans, nstart = 10, iter.max = 15 )
 ```
 
 ## Mapa para el agrupamiento mediante K-means
@@ -256,51 +260,27 @@ agrupamiento_kmeans <- kmeans(db_escolaridad_escalado, centers = 7, nstart = 10,
 ```{r}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
 
-nombres_mapa <- data.frame(political$NOMBRE)
-rownames(nombres_mapa) <- political$NOMBRE
-clusters_y_nombres <- data.frame(agrupamiento_kmeans$cluster)
+grupos_barrios <- data.frame(barrio_nombre = rownames(db_escolaridad), grupo = agrupamiento_kmeans$cluster)
+nombres_mapa <- data.frame(nombre_barrio = political$NOMBRE)
+
+grupos_mapa <- merge(x = grupos_barrios, y = nombres_mapa, by.x = "barrio_nombre", by.y = "nombre_barrio")
+grupos_mapa <- grupos_mapa %>% mutate(grupo = as.factor(grupo))
+
+factpal <- colorFactor(rainbow(k_optimo_kmeans), grupos_mapa$grupo)
 
 Encoding(political@data$NOMBRE) <- "UTF-8"
+
 political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
 
 leaflet(data = political) %>% 
   addTiles() %>% 
   addProviderTiles(providers$OpenStreetMap) %>% 
-  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = colores, 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(grupos_mapa$grupo), 
               label = as.character(political$NOMBRE),
               popup = as.character(political$NOMBRE)) %>% 
   addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
 ```
 
-```{r}
-nombres_mapa <- political$NOMBRE %>% sort()
-
-interseccion <- nombres_mapa %>% 
-  intersect(rownames(db_escolaridad))
-
-no_coinciden <- rownames(db_escolaridad)[!(rownames(db_escolaridad) %in% interseccion)]
-```
-
-```{r}
-no_coinciden
-```
-
-```{r}
-rownames(db_escolaridad)
-```
-
-```{r}
-nombres_mapa
-```
-
-
-```{r}
-agrupamiento <- raw_encuesta %>% 
-  group_by(encuesta_calidad.barrio) %>% 
-  summarise(n = n())
-
-agrupamiento$encuesta_calidad.barrio
-```
 
 # Agrupamiento Jerárquico
 
@@ -321,7 +301,7 @@ summary(split_db_escolaridad$`1`)
 summary(split_db_escolaridad$`6`)
 ```
 
-## Mapa geográfico usando el agrupamiento (K-means)
+## Mapa geográfico usando el agrupamiento (Agrupamiento Jerárquico)
 
 ```{r}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
@@ -338,35 +318,9 @@ leaflet(data = political) %>%
   addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
 ```
 
-```{r}
-nombres_mapa <- political$NOMBRE %>% sort()
-
-interseccion <- nombres_mapa %>% 
-  intersect(rownames(db_escolaridad))
-
-no_coinciden <- rownames(db_escolaridad)[!(rownames(db_escolaridad) %in% interseccion)]
-```
 
 ```{r}
-no_coinciden
+agrupamiento_kmeans$cluster
 ```
-
-```{r}
-rownames(db_escolaridad)
-```
-
-```{r}
-nombres_mapa
-```
-
-
-```{r}
-agrupamiento <- raw_encuesta %>% 
-  group_by(encuesta_calidad.barrio) %>% 
-  summarise(n = n())
-
-agrupamiento$encuesta_calidad.barrio
-```
-
 
 
