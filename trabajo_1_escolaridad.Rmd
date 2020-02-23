@@ -15,6 +15,8 @@ library(GGally)
 library(leaflet)
 library(raster)
 library(mltools)
+library(corrplot)
+library(highcharter)
 ```
 
 # Lectura de datos
@@ -182,6 +184,8 @@ Por otro lado, las proporción de personas que estudiaron en el último año tam
 
 ## Correlaciones y análisis de distribuciones
 
+Ahora centremos nuestra atención en variables específicas del conjunto de datos.
+
 ```{r}
 ggpairs(data = db_escolaridad %>% dplyr::select(edad_promedio, proporcion_escolaridad_actual, proporcion_lectoescritura),
        mapping = aes(alpha = 0.7))
@@ -232,6 +236,8 @@ Note entonces que las personas de los barrios tienden a tener estudios de secund
 
 # Escalamiento de datos
 
+Inicialmente escalaremos las variables que se usaran en los algoritmos de agrupamiento.
+
 ```{r}
 db_escolaridad_escalado <- db_escolaridad %>% 
   mutate_at(vars(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna), scale)
@@ -251,12 +257,10 @@ summary(pca)
 
 ## Varianza explicada por cada componente
 
+Ahora, se mostrará la varianza explicada por los componentes mediante el calculo de la suma acumulada del porcentaje explicado.
+
 ```{r}
 porcentaje_exp <- 100 * (pca$sdev ^ 2) / sum(pca$sdev ^ 2)
-
-ggplot(data = data.frame(componente = factor(1:ncol(datos_escalados_agrupamiento)), porcentaje_exp)) +
-  geom_col(mapping = aes(x = componente, y = porcentaje_exp))
-
 suma_acumulada_porcentaje <- cumsum(porcentaje_exp)
 
 ggplot(data = data.frame(componente = factor(1:ncol(datos_escalados_agrupamiento)), suma_acumulada_porcentaje),
@@ -268,20 +272,25 @@ ggplot(data = data.frame(componente = factor(1:ncol(datos_escalados_agrupamiento
 
 ```
 
+En la gráfica anterior, la linea horizontal roja corresponde a una varianza explicada acumulada de un 90%, por tanto se puede ver que al tomar las primeras 7 componentes principales se obtiene una varianza explicada de `r cumsum(porcentaje_exp)[7]`%, lo cuál se usará para hacer la reducción de dimensionalidad.
+
 ## Proyección respecto a las componentes principales
+
+Primero proyectaremos los datos respecto a las componentes principales.
 
 ```{r}
 datos_proyectados <- t(t(pca$rotation) %*% t(datos_escalados_agrupamiento))
 ```
 
-Note que al tomar las primeras 7 componentes principales, se obtiene una varianza explicada del `r cumsum(porcentaje_exp)[7]`%, por tanto se tomaran únicamente las primeras 7 componentes principales.
+Ahora seleccionaremos las primeras 7 componentes principales que explican mas del 90% de la varianza.
 
 ```{r}
 datos_agrupamiento <- datos_proyectados[, 1:7] %>% as_tibble()
 ```
 
-
 # Agrupamiento mediante K-means
+
+El primer método que se usara para hacer el agrupamiento sera K-means. Para esto, realizaremos una gráfica de codo que nos dará indicios del número de grupos que debemos tomar dentro de este algoritmo.
 
 ## Selección del $K$ óptimo (Gráfica de codo)
 
@@ -293,21 +302,31 @@ wss <- sapply(1:k_maximo,
                 kmeans(datos_agrupamiento, k, nstart = 10, iter.max = 15 )$tot.withinss
               })
 
-plot(1:k_maximo, wss,
-     type="b", pch = 19, frame = FALSE, 
-     xlab="Número de grupos [K]",
-     ylab="Total de suma de cuadrados intra-grupos")
+
+ggplot(data = data.frame(k = factor(1:k_maximo), wss),
+        aes(x = k, y = wss, group = 1)) +
+  geom_point() +
+  geom_line() +
+  xlab("Número de grupos [K]") +
+  ylab("Total de suma de cuadrados intra-grupos")
+
 
 k_optimo_kmeans <- 5
 ```
 
+Note entonces que una selección de $K$ entre 5 y 7 es razonable, ya que la variación de la suma de cuadrados intra-grupos no ofrece un cambio significativo. Además se considera contraproducente hacer una selección muy grande de grupos en términos de la interpretabilidad del resultado ofrecido por el algoritmo de agrupamiento, pues se considera mas util tener pocos grupos que sean altamente diferenciadores de la ciudad de Medellín contrario a tener una variedad de grupos altamente dispersos donde no se pueda identificar un patrón de agrupamiento claro.
+
 ## Agrupamiento con $K$ óptimo 
+
+Se realiza la ejecución del algoritmo K-means con la cantidad de grupos extraidas del análisis anterior.
 
 ```{r}
 agrupamiento_kmeans <- kmeans(datos_agrupamiento, centers = k_optimo_kmeans, nstart = 10, iter.max = 15 )
 ```
 
 ## Mapa para el agrupamiento mediante K-means
+
+Al colorear el mapa de los barrios de Medellín de acuerdo a los grupos se obtiene la siguiente gráfica.
 
 ```{r}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
@@ -337,29 +356,96 @@ leaflet(data = political) %>%
   addTiles() %>% 
   addProviderTiles(providers$OpenStreetMap) %>% 
   addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos$grupo), 
-              label = as.character(political$NOMBRE),
-              popup = as.character(political$NOMBRE)) %>% 
+              label = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo)),
+              popup = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo))) %>% 
   addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
 ```
 
+## Análisis del agrupamiento
+
+```{r}
+db_escolaridad_kmeans <- db_escolaridad %>% mutate(
+  grupo = agrupamiento_kmeans$cluster
+)
+```
+
+### Cálculo de la media y la varianza por grupos
+
+```{r}
+medias_grupo <- db_escolaridad_kmeans %>% dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna) %>% 
+  group_by(grupo) %>% 
+  summarize_all(~mean(.))
+```
+
+Primero, analicemos la media de la variable que mide la proporción de personas con habilidades lecto-escritoras
+
+```{r}
+ggplot(data = medias_grupo) +
+  geom_bar(mapping = aes(x = grupo, weight = proporcion_lectoescritura))
+```
+
+Hay que notar que la proporción de personas con la capacidad de leer y escribir mas de un párrafo no es una característica diferenciadora a la hora de hacer el agrupamiento. Esto se puede concluir a partir de los resultados obtenidos en el análisis descriptivo, pues las habilidad lecto-escritora media es buena en la mayor parte de la ciudad.
+
+Un criterio que será diferenciador entre los grupos será la proporción de personas cuyo último nivel de estudio es universitario, pues en general el análisis descriptivo arrojó que esta proporción es baja al analizar los barrios desde un punto de vista general. Veamos una gráfica comparativa por grupos para esta variable.
+
+```{r}
+ggplot(data = medias_grupo) +
+  geom_bar(mapping = aes(x = grupo, weight = proporcion_nivel_estudio_7))
+
+grupo_mayor_universitarios <- medias_grupo[which(medias_grupo$proporcion_nivel_estudio_7 == max(medias_grupo$proporcion_nivel_estudio_7)), "grupo"]$grupo
+
+grupo_menor_universitarios <- medias_grupo[which(medias_grupo$proporcion_nivel_estudio_7 == min(medias_grupo$proporcion_nivel_estudio_7)), "grupo"]$grupo
+```
+
+El grupo donde predominan las personas que realizan estudios universitarios como último estudio es `r grupo_mayor_universitarios`, mientras que el grupo donde la proporción de habitantes cuyo ultmo estudio es de caracter universitario es mas pequeña corresponde al grupo `r grupo_menor_universitarios` .
+
+El grupo `r grupo_mayor_universitarios` corresponde a los siguientes barrios que aparecen en <span style="color:`r factpal(grupo_mayor_universitarios)`">**este color**</span> dentro del mapa:
+
+```{r}
+db_escolaridad_kmeans[which(db_escolaridad_kmeans$grupo == grupo_mayor_universitarios), "encuesta_calidad.barrio"] %>% as.list()
+```
+
+Por otro lado el grupo `r grupo_menor_universitarios`, que es el grupo con menor indicador de personas con estudios universitarios corresponde a los siguientes barrios que se encuentran coloreados con <span style="color:`r factpal(grupo_menor_universitarios)`">**este color**</span> dentro del mapa:
+
+```{r}
+db_escolaridad_kmeans[which(db_escolaridad_kmeans$grupo == grupo_menor_universitarios), "encuesta_calidad.barrio"] %>% as.list()
+```
+
+Es importante notar entonces que los barrios con personas que acceden a estudios universitarios se situan en en suroriente de la ciudad, y algunos de ellos también estan ubicados en la parte central. Pero hay que aclarar que una característica general de estos barrios es que son mas cercanos a la cabecera urbana de Medellín. Adicionalmente, acudiendo a la experiencia, estos barrios son lugar de residencia de personas con mayor capacidad económica, mientras que los barrios con un menor indice de personas que tienen estudios universitarios corresponde a aquellos ubicados en zonas geográficas alejadas del centro de la ciudad y son reconocidos por ser barrios de bajos ingresos económicos. Este resultado puede darse debido a que las instituciones universitarias públicas estan ubicados en la parte central de la ciudad y unido a esto, dichas universidades realizan procesos de selección para el ingreso de nuevos aspirantes, por tanto, los barrios marginales tienen dificultades para acceder a este tipo de educación por su ubicación geografica y por su incapacidad económica para que sus habitantes asistan a dichas instituciones.
+
+Realicemos este mismo análisis usando la proporcion de personas cuyo ultimo estudio lo realizaron en instituciones de educación pública, y veamos que esto refuerza el argumento que fue expuesto anteriormente.
+
+```{r}
+ggplot(data = medias_grupo) +
+  geom_bar(mapping = aes(x = grupo, weight = proporcion_instituciones_publicas))
+```
+
+Note entonces que el fenómeno donde la economía de los hogares incide en las alternativas de selección para la educación se marca también se ve expresado en los grupos de barrios discutidos anteriormente. Pues se puede notar que las personas que viven en barrios reconocidos por tener dificultades económicas realizan su ultimo estudio en instituciones de educación pública debido al facil acceso a este tipo de educación.
+
+Este fenómeno es un motivante para centrar la atención en la creación de políticas donde las personas de los barrios ubicados en el grupo `r grupo_menor_universitarios` tengan acceso a estudios universitarios con el fin de mejorar su calidad educativa y ayudar a sus habitantes a mejorar sus condiciones de vida en las demas dimensiones.
+
+Un caso interesante de análisis, es considerar a los barrios aledaños a San Antonio de Prado, si bien es cierto que estos barrios estan alejados de la parte central de la ciudad, no aparecen dentro del grupo `r grupo_menor_universitarios`. Pero si observamos la geografía de este barrio, notamos que hay vías de acceso hacia el municipio de Itagui, la Estrella y Sabaneta, lo que mejora en cierta medida la calidad educativa de esta zona.
+
+Si se intenta generalizar este análisis y mostramos los grupos ordenados de manera descendente de acuerdo a la media de la proporcionalidad de personas cuyo último nivel de estudio es universitario, se obtiene los siguientes datos:
+
+```{r}
+medias_grupo[order(medias_grupo$proporcion_nivel_estudio_7, decreasing = TRUE), ] %>% dplyr::select(grupo, proporcion_nivel_estudio_7)
+```
+
+Obteniendo de esta manera que el patrón analizado anteriormente se puede generalizar a los demás grupos, es decir, el orden de estos grupos coincide con un orden determinado por el poder adquisitivo de los habitantes en cada uno barrios presentes en cada grupo.
+
+Para finalizar con una comparativa basada en estudios, observemos un mapa que muestra el indice de desarrollo humano realizado por la Alcaldía de Medellín para el año 2011.
+
+![Indice de desarrollo humano (2011)](images/desarrollo_humano.png)
 
 # Agrupamiento Jerárquico
 
 ```{r}
-cantidad_grupos_jerarquico <- 7
+cantidad_grupos_jerarquico <- 5
 
 distancia <- dist(datos_agrupamiento)
 agrupamiento <- hclust(distancia, method = "complete")
 arbol_corte <- cutree(agrupamiento, k = cantidad_grupos_jerarquico)
-
-split_db_escolaridad <- split(db_escolaridad, arbol_corte)
-```
-
-## Seleccion de los grupos
-
-```{r}
-summary(split_db_escolaridad$`1`)
-summary(split_db_escolaridad$`6`)
 ```
 
 ## Mapa geográfico usando el agrupamiento (Agrupamiento Jerárquico)
@@ -392,8 +478,8 @@ leaflet(data = political) %>%
   addTiles() %>% 
   addProviderTiles(providers$OpenStreetMap) %>% 
   addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos$grupo), 
-              label = as.character(political$NOMBRE),
-              popup = as.character(political$NOMBRE)) %>% 
+              label = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo)),
+              popup = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo))) %>% 
   addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
 ```
 
