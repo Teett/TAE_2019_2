@@ -365,14 +365,14 @@ leaflet(data = political) %>%
 
 ```{r}
 db_escolaridad_kmeans <- db_escolaridad %>% mutate(
-  grupo = agrupamiento_kmeans$cluster
+  grupo = factor(agrupamiento_kmeans$cluster)
 )
 ```
 
 ### Cálculo de la media y la varianza por grupos
 
 ```{r}
-medias_grupo <- db_escolaridad_kmeans %>% dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna) %>% 
+medias_grupo_kmeans <- db_escolaridad_kmeans %>% dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna) %>% 
   group_by(grupo) %>% 
   summarize_all(~mean(.))
 ```
@@ -380,7 +380,7 @@ medias_grupo <- db_escolaridad_kmeans %>% dplyr::select(-n, -encuesta_calidad.ba
 Primero, analicemos la media de la variable que mide la proporción de personas con habilidades lecto-escritoras
 
 ```{r}
-ggplot(data = medias_grupo) +
+ggplot(data = medias_grupo_kmeans) +
   geom_bar(mapping = aes(x = grupo, weight = proporcion_lectoescritura))
 ```
 
@@ -389,12 +389,12 @@ Hay que notar que la proporción de personas con la capacidad de leer y escribir
 Un criterio que será diferenciador entre los grupos será la proporción de personas cuyo último nivel de estudio es universitario, pues en general el análisis descriptivo arrojó que esta proporción es baja al analizar los barrios desde un punto de vista general. Veamos una gráfica comparativa por grupos para esta variable.
 
 ```{r}
-ggplot(data = medias_grupo) +
+ggplot(data = medias_grupo_kmeans) +
   geom_bar(mapping = aes(x = grupo, weight = proporcion_nivel_estudio_7))
 
-grupo_mayor_universitarios <- medias_grupo[which(medias_grupo$proporcion_nivel_estudio_7 == max(medias_grupo$proporcion_nivel_estudio_7)), "grupo"]$grupo
+grupo_mayor_universitarios <- medias_grupo_kmeans[which(medias_grupo_kmeans$proporcion_nivel_estudio_7 == max(medias_grupo_kmeans$proporcion_nivel_estudio_7)), "grupo"]$grupo
 
-grupo_menor_universitarios <- medias_grupo[which(medias_grupo$proporcion_nivel_estudio_7 == min(medias_grupo$proporcion_nivel_estudio_7)), "grupo"]$grupo
+grupo_menor_universitarios <- medias_grupo_kmeans[which(medias_grupo_kmeans$proporcion_nivel_estudio_7 == min(medias_grupo_kmeans$proporcion_nivel_estudio_7)), "grupo"]$grupo
 ```
 
 El grupo donde predominan las personas que realizan estudios universitarios como último estudio es `r grupo_mayor_universitarios`, mientras que el grupo donde la proporción de habitantes cuyo ultmo estudio es de caracter universitario es mas pequeña corresponde al grupo `r grupo_menor_universitarios` .
@@ -416,7 +416,7 @@ Es importante notar entonces que los barrios con personas que acceden a estudios
 Realicemos este mismo análisis usando la proporcion de personas cuyo ultimo estudio lo realizaron en instituciones de educación pública, y veamos que esto refuerza el argumento que fue expuesto anteriormente.
 
 ```{r}
-ggplot(data = medias_grupo) +
+ggplot(data = medias_grupo_kmeans) +
   geom_bar(mapping = aes(x = grupo, weight = proporcion_instituciones_publicas))
 ```
 
@@ -429,19 +429,27 @@ Un caso interesante de análisis, es considerar a los barrios aledaños a San An
 Si se intenta generalizar este análisis y mostramos los grupos ordenados de manera descendente de acuerdo a la media de la proporcionalidad de personas cuyo último nivel de estudio es universitario, se obtiene los siguientes datos:
 
 ```{r}
-medias_grupo[order(medias_grupo$proporcion_nivel_estudio_7, decreasing = TRUE), ] %>% dplyr::select(grupo, proporcion_nivel_estudio_7)
+medias_grupo_kmeans[order(medias_grupo_kmeans$proporcion_nivel_estudio_7, decreasing = TRUE), ] %>% dplyr::select(grupo, proporcion_nivel_estudio_7)
 ```
 
 Obteniendo de esta manera que el patrón analizado anteriormente se puede generalizar a los demás grupos, es decir, el orden de estos grupos coincide con un orden determinado por el poder adquisitivo de los habitantes en cada uno barrios presentes en cada grupo.
 
-Para finalizar con una comparativa basada en estudios, observemos un mapa que muestra el indice de desarrollo humano realizado por la Alcaldía de Medellín para el año 2011.
+Otro aspecto que vale la pena resaltar es que si bien estos mapas no determinan el nivel de ingresos de determinado barrio, se puede notar una separación que denota la proporcionalidad casi directa entre ambas dimensiones. Tomando esto en cuenta, este mapa tambien resalta de manera significativa aquellos barrios que tienen grandes cantidades de hogares de invasión como es el caso del barrio La Iguaná, que es precisamente uno de los barrios que quedó dentro del grupo `r grupo_menor_universitarios`, catalogado como uno de los grupos con menos estudios universitarios. Esto denota que la segregación social se expresa de manera directa en los indices de educación de la población.
 
-![Indice de desarrollo humano (2011)](images/desarrollo_humano.png)
+Para finalizar con una comparativa basada en estudios, observemos un mapa realizado por la Alcaldía de Medellín en el año 2011 que muestra el indice de desarrollo humano.
+
+![Indice de desarrollo humano (2011) - Tomado de Medellín en Cifras N°3 (Las metas del desarrollo)](images/desarrollo_humano.png)
+
+Al comparar ambos mapas se nota en gran medida la similaridad de los territorios separados, pues se muestra que el índice de desarrollo humano se da en mayor medida para las zonas que resultaron ser más favorecidas durante el presente análisis en términos de la educación. Esto nos permite concluir que la educación es un factor bastante influyente en el desarrollo social y económico de los habitantes de la ciudad, por tanto la formulación de políticas que permita a los barrios marginales a acceder a la educación superior, ayudara a mejorar las demás dimensiones sociales dentro de la ciudad.
 
 # Agrupamiento Jerárquico
 
+A continuación realizaremos el agrupamiento jerárquico con el fin de comparar los resultados arrojados por ambos algoritmos
+
+Se realizará el algoritmo de agrupamiento con 7 grupos, como se muestra en el siguiente código:
+
 ```{r}
-cantidad_grupos_jerarquico <- 5
+cantidad_grupos_jerarquico <- 7
 
 distancia <- dist(datos_agrupamiento)
 agrupamiento <- hclust(distancia, method = "complete")
@@ -449,6 +457,8 @@ arbol_corte <- cutree(agrupamiento, k = cantidad_grupos_jerarquico)
 ```
 
 ## Mapa geográfico usando el agrupamiento (Agrupamiento Jerárquico)
+
+El mapa resultante del agrupamiento jerárquico se muestra en la siguiente gráfica:
 
 ```{r}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
@@ -483,3 +493,32 @@ leaflet(data = political) %>%
   addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
 ```
 
+Desde un punto de vista general, el agrupamietno jeráriquico muestra un comportamiento muy similar al que se obtuvo mediante el algoritmo K-Means, pues podemos ver que la zona que comprende los barrios aledaños al Poblado pertenece a un mismo grupo, mientras que las zonas correspondientes a barrios con oportunidades económicas bajas quedo en otro grupo. Además los grupos con una calidad educativa intermedia, como lo son los barrios aledaños a La Castellana, Laureles, La Loma de los Bernal y Buenos Aires, quedaron en un mismo grupo.
+
+Comparando ambos algoritmos, podemos notar que K-means ofrece una separación con más información, es decir, si observamos el agrupamiento producido por el algoritmo de agrupamiento jerárquico, se puede notar que los barrios correspondientes a la zona de Aranjuez y Manrique quedaron en un mismo grupo, mientras que con el algoritmo K-means se logra diferenciar dos grupos para esta ubicación geográfica.
+
+Observando a grandes razgos, el patrón es el mismo y las conclusiones que se pueden extraer de este mapa siguen la misma idea de K-means. Sin embargo hay una diferencia entre los dos agrupamientos. Analicemos los grupos para este algoritmo haciendo uso de una variable diferenciadora como la proporcion de personas cuyo último estudio fue de carácter universitario
+
+```{r}
+db_escolaridad_jerarquico <- db_escolaridad %>% mutate(
+  grupo = factor(arbol_corte))
+
+medias_grupo_jerarquico <- db_escolaridad_jerarquico %>% dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna) %>% 
+  group_by(grupo) %>% 
+  summarize_all(~mean(.))
+
+ggplot(data = medias_grupo_jerarquico) +
+  geom_bar(mapping = aes(x = grupo, weight = proporcion_nivel_estudio_7))
+
+grupo_mayor_universitarios_kmeans <- medias_grupo_jerarquico[which(medias_grupo_jerarquico$proporcion_nivel_estudio_7 == max(medias_grupo_jerarquico$proporcion_nivel_estudio_7)), "grupo"]$grupo
+```
+
+Note que al se ha obtenido un comportamiento un poco contrario en cuanto a la diferenciación de los grupos para cada uno de los algoritmos. En el caso de K-means, se obtiene una mayor capacidad para diferenciar barrios cuyo nivel de escolaridad no es alto, como en el caso de los barrios cercanos a Manrique. Mientras que por otro lado, el algoritmo de agrupamiento jerárquico ofrece mayor diferenciabilidad para aquellos barrios que tienen altos ingresos economicos y por tanto un mejor acceso a educación como es en el caso de la diferenciación entre el grupo de los barrios aledaños al Poblado con respecto a barrios como Altos del Poblado y Lalinde. 
+
+En este caso, el grupo con mayor proporción de personas con estudios universitarios como último nivel de estudio (grupo `r grupo_mayor_universitarios_kmeans`es el que corresponde a los siguientes barrios:
+
+```{r}
+db_escolaridad_jerarquico[which(db_escolaridad_jerarquico$grupo == grupo_mayor_universitarios_kmeans), "encuesta_calidad.barrio"] %>% as.list()
+```
+
+Esto muestra que en el sector del Poblado aun puede haber una diferenciación entre los barrios, mucho más detallada de lo que puede encontrarse con el algoritmo K-means.
