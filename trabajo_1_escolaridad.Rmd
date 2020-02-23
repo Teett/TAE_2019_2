@@ -19,6 +19,8 @@ library(mltools)
 
 # Lectura de datos
 
+Inicialmente, para la lectura de datos, se requieren unos cambios en los nombres de las variables para graficar los mapas posteriormente.
+
 ```{r}
 raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
   as_tibble()
@@ -51,6 +53,8 @@ raw_encuesta <- data.frame(raw_encuesta, variables_categoricas_encoding)
 ```
 
 # Creación de la base de datos
+
+La creación de la base de datos se hace con base en las preguntas pertenecientes a la dimensión "Escolaridad", esta clasificación de las preguntas se hizo a criterio del equipo con la ayuda del informe escrito por la Alcaldía de Medellín durante el planteamiento de la encuesta.
 
 ```{r}
 #Agregación de las variables
@@ -138,9 +142,6 @@ db_escolaridad <- db_escolaridad %>%
 
 ```
 
-
-
-
 # Escritura de los datos
 
 ```{r}
@@ -153,8 +154,8 @@ write_excel_csv2(db_escolaridad, "databases/db_escolaridad.csv")
 * **proporcion_lectoescritura:** esta variable se construye a partir de la pregunta 35. La variable se calcula como la proporción de personas que pueden leer y escribir más de un parrafo con respecto al total de personas que respondieron dicha pregunta. Esta proporción se calcula a nivel de cada barrio.
 * **proporcion_escolaridad_actual:** esta variable es un derivado de la pregunta 36. Esta variable representa la proporción de personas que están estudiando en el momento respecto al total de personas que respondieron esta pregunta para cada barrio.
 * **esudio_ultimo_ano:** Se calcula como la proporción de personas que estudian en el ultimo año respecto al total de personas que respondieron la pregunta 37 de manera efectiva.
-* **ultimo_nivel_estudio:** representa la moda de cada barrio extraida sobre el nivel de estudio de los hogares encuestados. Esta pregunta es extraída mediante el cálculo de la moda sobre la pregunta 45.
-* **tipo_institucion_educativa**: se extrae mediante el calculo de la moda de cada barrio a sobre la pregunta 49. Representa el tipo de institución educativa que predominante en la cuál los encuestados estudiaron su último curso o en la que están estudiando actualmente.
+* **ultimo_nivel_estudio:** Este en realidad es un conjunto de variables procedentes de la pregunta 45. En dicha pregunta se responde cuál fue el último nivel de estudio de la persona encuestada. Allí las posibles respuestas son 11 categorías. A las respuestas a dicha pregunta se les hizo un One-hot encoding y posteriormente se calculó la proporcion que respondieron afirmativamente cada categoría por cada barrio. Para las categorías se tiene la siguiente nomenclatura: 0 = Ninguno; 1 = Salacuna, guarderia o preescolar; 2 = Primaria; 3 = Secundaria; 4 = Media académica o normalista; 5 = Media Técnica; 6 = Tecnológica; 7 = Universidad; 8 = Especialización; 9 = Maestría; 10 = Doctorado.
+* **tipo_institucion_educativa**: Se calcula como la proporción de personas cuyo último nivel de estudio se realizó en una institución de educación publica, calculando esta vairbale para cada barrio a sobre la pregunta 49. 
 
 Es importante considerar que la variable "edad_promedio" no necesariamente hace referencia a la dimensión de escolaridad, sin embargo, se quiere realizar un contraste entre la variable "edad_promedio" y las demás variables para extraer información y hacer validaciones empíricas.
 
@@ -177,43 +178,57 @@ Dada la información sobre las medias arrojada para cada variable, hay que resal
 
 Por otro lado, las proporción de personas que estudiaron en el último año tambien es baja, pero no se debe concluir que esto es necesariamente negativo. Cabe la posibilidad que varias personas en un determinado barrio sean trabajadores y por tanto no dedican mas tiempo al estudio a partir de cierto momento de su vida.
 
-**>>>>>>> CONCLUIR NIVEL DE ESTUDIO AQUI <<<<<<<**
-
-# Graficas
+# Gráficas
 
 ## Correlaciones y análisis de distribuciones
 
 ```{r}
+ggpairs(data = db_escolaridad %>% dplyr::select(edad_promedio, proporcion_escolaridad_actual, proporcion_lectoescritura),
+       mapping = aes(alpha = 0.7))
+```
+
+De la gráfica anterior, se debe resaltar significativamente las correlaciones entre las variables "edad_promedio" con las variables "proporcion_lectoescritura" y "proporcion_escolaridad_actual". Note que la "edad_promedio" esta correlacionada de manera directa con la variable "proporcion_lectoescritura" y de manera inversa con la variable "proporcion_escolaridad_actual". Esta información que se obtiene coincide con el conocimiento epírico, pues por un lado, las personas con mayor edad tienen mas probabilidad de tener como mínimo educación primaria, obteniendo así mas habilidades lecto-escritoras, mientras que por otro lado a medida que las personas envejecen dejan de educarse debido a que pasan al entorno laboral.
+
+```{r}
+ggplot(data = db_escolaridad,
+       mapping = aes(x = proporcion_instituciones_publicas)) +
+  geom_density()
+```
+
+
+Por otro lado, analizando la gráfica anterior, se puede notar que en los barrios, las personas tienen tendencia a educarse en establecimientos de índole pública debido a su fácil acceso.
+
+Ahora centraremos nuestro análisis en la proporcion de personas cuyo último nivel de estudio fue primaria, secundaria y universidad. A continuación interpretaremos la relación entre estas proporciones y el tipo de institución pública donde se realizó el último estudio.
+
+```{r}
 ggpairs(data = db_escolaridad %>% 
-          dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna),
-        columns = 1:ncol(db_escolaridad %>% 
-          dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna)),
-        mapping = aes(alpha = 0.5))
+          dplyr::select(proporcion_instituciones_publicas,
+                        proporcion_nivel_estudio_7),
+       mapping = aes(alpha = 0.7))
 ```
 
-De la gráfica anterior, se debe resaltar significativamente las correlaciones entre las variables "edad_promedio" con las variables "proporcion_lectoescritura" y "proporcion_escolaridad_actual". Note que la "edad_promedio" esta correlacionada de manera directa con la variable "proporcion_lectoescritura" y de manera inversa con la variable "proporcion_escolaridad_actual". Esta información que se obtiene coincide con el conocimiento epírico, pues por un lado, las personas con mayor edad tienen mas probabilidad de tener como mínimo una educación primaria, obteniendo así mas habilidades lecto-escritoras, mientras que por otro lado a medida que las personas envejecen dejan de educarse y pasan a ambientes mas laborales.
+En la gráfica anterior se puede ver un hallazgo importante, y es que en los barrios donde las personas tienden a estudiar en instituciones públicas, hay una menor tendencia a optar por estudios universitarios, mientras que los barrios que tienen tendencia a realizar estudios en instituciones privadas, tienen mayor proporción de personas que optan tener estudios universitarios. Este fenómeno puede analizarse desde una perspectiva transversal a la condicion económica de los barrios, pues si en un barrio hay más tendencia a educarse en instituciones privadas, significa que hay un poder adquisitivo mucho más alto, lo que permite tener oportunidades económicas para realizar estudios universitarios; mientras que por otro lado, el acceso a la educación pública para estudios escolares es económicamente mas viable, por tanto en los barrios con bajos ingresos la educación primaria y secundaria se puede adquirir con facilidad, pero ingresar a instituciones de educación superior es mucho más retador, pues las universidades privadas no son una opción común debido a las dificultades económicas, y sumado a esto la educación superior pública tiene mecanismos de selección para estudiantes aspirantes, lo cual reduce la posibilidad de ingresar a la educación universitaria en estos barrios.
 
-Por otro lado, note que en los barrios las personas tienen tendencia a educarse en establecimientos de índole pública debido a su fácil acceso.
-
-
-## Valores tipicos
+Ahora si tomamos las proporciones de los niveles de estudio y extraemos la media puede tenerse una visión general de la escolaridad en Medellín.
 
 ```{r}
-ggplot(data = db_escolaridad) +
-  geom_histogram(mapping = aes(x = proporcion_lectoescritura), binwidth = 0.002)
+medias_nivel_estudio <- apply(db_escolaridad %>% dplyr::select( proporcion_nivel_estudio_0, 
+                        proporcion_nivel_estudio_1,
+                        proporcion_nivel_estudio_2,
+                        proporcion_nivel_estudio_3,
+                        proporcion_nivel_estudio_4,
+                        proporcion_nivel_estudio_5,
+                        proporcion_nivel_estudio_6,
+                        proporcion_nivel_estudio_7,
+                        proporcion_nivel_estudio_8,
+                        proporcion_nivel_estudio_9,
+                        proporcion_nivel_estudio_10), 2, mean)
+
+ggplot(data = data.frame(nivel_estudio = factor(0:10), medias_nivel_estudio)) +
+  geom_bar(mapping = aes(x = nivel_estudio, weight = medias_nivel_estudio))
 ```
 
-```{r}
-ggplot(data = db_escolaridad,
-       mapping = aes(x = proporcion_escolaridad_actual)) +
-  geom_histogram(binwidth = 0.002)
-```
-
-```{r}
-ggplot(data = db_escolaridad,
-       mapping = aes(x = estudio_ultimo_ano)) +
-  geom_histogram(binwidth = 0.0005)
-```
+Note entonces que las personas de los barrios tienden a tener estudios de secundaria y media técnica, mientras que los estudios universitarios tienen una proporcion media muy baja respecto a los demas niveles de estudio.
 
 # Escalamiento de datos
 
@@ -328,7 +343,6 @@ leaflet(data = political) %>%
 ```
 
 
-
 # Agrupamiento Jerárquico
 
 ```{r}
@@ -371,10 +385,6 @@ mapa_grupos <- data.frame(
   nombre_barrio = vector_nombres, 
   grupo = vector_grupos
 )
-
-# Modificación manual de barrios repetidos 
-
-
 
 factpal <- colorFactor(rainbow(cantidad_grupos_jerarquico), mapa_grupos$grupo)
 
