@@ -228,7 +228,7 @@ ggplot(data = data.frame(nivel_estudio = factor(0:10), medias_nivel_estudio)) +
   geom_bar(mapping = aes(x = nivel_estudio, weight = medias_nivel_estudio))
 ```
 
-Note entonces que las personas de los barrios tienden a tener estudios de secundaria y media técnica, mientras que los estudios universitarios tienen una proporcion media muy baja respecto a los demas niveles de estudio.
+Note entonces que las personas de los barrios tienden a tener estudios de secundaria y media técnica como último estudio realizado, mientras que los estudios universitarios tienen una proporcion media muy baja respecto a los demas niveles de estudio.
 
 # Escalamiento de datos
 
