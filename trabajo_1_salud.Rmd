@@ -318,6 +318,10 @@ Para favorecer la interpretabilidad y teniendo en cuenta que no hay agrupamiento
 agrupamiento_kmeans <- kmeans(clustering_salud, centers = k_seleccionado, nstart = 10, iter.max = 15 )
 ```
 
+## Análisis descriptivo de los grupos
+
+
+
 ## Mapa para el agrupamiento mediante K-means
 
 ```{r}
@@ -353,7 +357,67 @@ leaflet(data = political) %>%
   addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
 ```
 
+# Agrupamiento Jerárquico
 
+```{r}
+cantidad_grupos_jerarquico <- 5
+
+distancia <- dist(clustering_salud)
+agrupamiento <- hclust(distancia, method = "complete")
+arbol_corte <- cutree(agrupamiento, k = cantidad_grupos_jerarquico)
+
+db_salud_jer <- bind_cols(db_salud, cluster = arbol_corte)
+split_db_salud <- split(db_salud, arbol_corte)
+```
+
+## Mapa geográfico usando el agrupamiento (Agrupamiento Jerárquico)
+
+```{r}
+political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
+Encoding(political@data$NOMBRE) <- "UTF-8"
+political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
+
+grupos_barrios_jer <- data.frame(barrio_nombre = db_salud$encuesta_calidad.barrio, comuna_nombre = db_salud$encuesta_calidad.comuna, grupo = arbol_corte)
+nombres_mapa_jer <- data.frame(nombre_barrio = political$NOMBRE)
+
+vector_nombres_jer = c()
+vector_grupos_jer = c()
+
+for(nombre_mapa in nombres_mapa$nombre_barrio) {
+  grupo <- grupos_barrios_jer[grupos_barrios_jer$barrio_nombre == nombre_mapa, 3][1]
+  vector_nombres_jer <- c(vector_nombres_jer, nombre_mapa)
+  vector_grupos_jer <- c(vector_grupos_jer, grupo)
+}
+
+mapa_grupos_jer <- data.frame(
+  nombre_barrio = vector_nombres, 
+  grupo = vector_grupos
+)
+
+factpal <- colorFactor(rainbow(cantidad_grupos_jerarquico), mapa_grupos_jer$grupo)
+
+leaflet(data = political) %>% 
+  addTiles() %>% 
+  addProviderTiles(providers$OpenStreetMap) %>% 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos_jer$grupo), 
+              label = as.character(political$NOMBRE),
+              popup = as.character(political$NOMBRE)) %>% 
+  addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
+```
+
+## Estadística descriptiva de los grupos obtenidos con el algoritmo jerárquico
+
+```{r}
+media_sd <- function(variable) {
+  paste0(round(mean(variable), 4), " (", round(sd(variable), 4), ")")
+}
+
+
+db_salud_jer %>%
+  dplyr::select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>% 
+  group_by(cluster) %>% 
+  summarise_all(~media_sd(.))
+```
 
 # Escritura
 
