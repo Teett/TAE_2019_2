@@ -260,7 +260,7 @@ glimpse(db_salud)
 
 salud_cor <- db_salud %>%
   select_if(is.numeric) %>% 
-  select(-n) %>%
+  dplyr::select(-n) %>%
   .[complete.cases(.),] %>% 
   cor()
 
@@ -284,7 +284,7 @@ No se identifican correlaciones notorias entre las variables numéricas, se nota
 ## Escalamiento de datos
 
 ```{r}
-salud_scaled <- db_salud_complete %>% 
+salud_scaled <- db_salud %>% 
   mutate_at(vars(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna), scale)
 ```
 
@@ -329,7 +329,7 @@ political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
 Encoding(political@data$NOMBRE) <- "UTF-8"
 political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
 
-grupos_barrios <- data.frame(barrio_nombre = db_salud_complete$encuesta_calidad.barrio, grupo = agrupamiento_kmeans$cluster)
+grupos_barrios <- data.frame(barrio_nombre = db_salud$encuesta_calidad.barrio, grupo = agrupamiento_kmeans$cluster)
 nombres_mapa <- data.frame(nombre_barrio = political$NOMBRE)
 
 vector_nombres = c()
@@ -412,12 +412,55 @@ media_sd <- function(variable) {
   paste0(round(mean(variable), 4), " (", round(sd(variable), 4), ")")
 }
 
-
 db_salud_jer %>%
   dplyr::select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>% 
   group_by(cluster) %>% 
-  summarise_all(~media_sd(.))
+  summarise_all(~media_sd(.)) %>% View()
+
 ```
+
+### Notas:
+
+- Cluster 1: 280 barrios
+
+  - Mayor acceso a salud 2.9678 (0.1586)
+  - Mayor calidad salud en nivel 4, 0.3399 (0.0663)
+  - Mayor negación de atención porque el caso era leve 0.3592 (0.3146)
+  - Mayor calidad de la prevención en nivel bueno, 0.7839 (0.1651)
+  - Mayor proporción de calidad de consulta especilista buena 0.7111 (0.1166)
+  - Mayor proporción de calidad de urgencias buena 0.5654 (0.151)
+  - Mayor cantidad de hospitalizaciones 1.5196 (0.6302)
+  - Mayor proporción de calidad de las hospitalizaciones en nivel bueno 0.6566 (0.2334)
+  
+- Cluster 2: 19 barrios
+
+  - Segunda mayor proporción de calidad consulta general buena 0.6424 (0.3672)
+  - Segunda mayor proporción de calidad consulta especialista buena 0.5577 (0.425)
+  - Menor número de asistencias a urgencias 1.0693 (1.2381)
+  
+- Cluster 3: 3 barrios
+
+  - Menor uso de programas de prevención 0.6667 (1.1547)
+  - Mayor número de consultas 6.8425 por mucho (2.6065)
+  - Mayor proporción de calidad de consulta general mala 0.4261 (0.2337)
+  - Mayor número de consultas especialista 	2.8824 (1.0206)
+  - Mayor proporción de calidad urgencias mala 0.5417 (0.5052)
+  
+- Cluster 4: 4 barrios
+
+  - Mayor morbilidad en los últimos 30 días 0.3318 (0.1687)
+  - Mayor negación de atención por falta de dinero 0.1389 (0.2778)
+  - Segundo mayor número de consultas 3.3943 (2.326)
+  - Mayor proporción de calidad de consulta buena 0.7624 (0.2448)
+  - Mayor número de asistencias a urgencias 4.5781 (3.4586)
+  - Menor cantidad de hospitalizaciones 0.25 (0.5)
+
+- Cluster 5: 2 barrios
+
+  - tiene mayor proporción de discapacidad, 0.4 (0.1414)
+  - Mayor uso de programas de prevención 2 (0)
+  - Menor número de consultas 2 (1.4142)
+
 
 # Escritura
 
