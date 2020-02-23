@@ -13,12 +13,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Librerías
 
-```{r}
+```{r, warnings = F}
 library(tidyverse)
 library(data.table)
 library(readxl)
 library(GGally)
 library(corrplot)
+library(leaflet)
+library(raster)
 ```
 
 # Lectura de datos
@@ -69,7 +71,7 @@ Con base en la cantidad de dos, se concluye que éste está asociado al "No", da
 
 ```{r}
 raw_encuesta %>% 
-select(paste0("encuesta_calidad.p_", 50:57)) %>% View()
+select(paste0("encuesta_calidad.p_", 50:57)) %>%
   mutate_all(as_factor) %>% 
   summary()
 
@@ -218,13 +220,11 @@ db_salud <- encuesta_salud %>%
             calidad_hospitalizacion_3 = sum(`encuesta_calidad.p_341_3` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_341_3`), na.rm = TRUE),
             calidad_hospitalizacion_4 = sum(`encuesta_calidad.p_341_4` == 1, na.rm = TRUE)/sum(!is.na(`encuesta_calidad.p_341_4`), na.rm = TRUE),
             ) %>% ungroup() %>% 
-  mutate(morbilidad_30 = replace_na(morbilidad_30, 0),
-         encuesta_calidad.barrio = clean_barrios) %>% 
-  mutate_at(factors, as_factor)
+  mutate_all(~replace_na(., 0)) %>% 
+  mutate_at(factors, as_factor) %>% 
+  filter(encuesta_calidad.barrio != "DESCONOCIDO")
 
 db_salud
-db_salud_complete <- db_salud[complete.cases(db_salud),]
-
 ```
 
 # Estadística descriptiva
@@ -280,6 +280,79 @@ No se identifican correlaciones notorias entre las variables numéricas, se nota
 ### Caso 2 - Con one-hot encoding
 
 >>Pendiente<<
+
+## Escalamiento de datos
+
+```{r}
+salud_scaled <- db_salud_complete %>% 
+  mutate_at(vars(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna), scale)
+```
+
+# Agrupamiento mediante k-Means
+```{r}
+clustering_salud <- salud_scaled %>% 
+  dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna)
+
+k_maximo <- 15
+
+wss <- sapply(1:k_maximo, 
+              function(k) {
+                kmeans(clustering_salud, k, nstart = 10, iter.max = 15 )$tot.withinss
+              })
+
+plot(1:k_maximo, wss,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Número de grupos [K]",
+     ylab="Total de suma de cuadrados intra-grupos")
+
+k_optimo_kmeans <- 10
+k_seleccionado <- 5
+```
+
+Para favorecer la interpretabilidad y teniendo en cuenta que no hay agrupamientos incorrectos, se decide utilizar `k_seleccionado` grupos y realizar su análisis descriptivo que permita llegar a conclusiones dicientes de los barrios analizados.
+
+## Agrupamiento con $K$ seleccionado 
+
+
+```{r}
+agrupamiento_kmeans <- kmeans(clustering_salud, centers = k_seleccionado, nstart = 10, iter.max = 15 )
+```
+
+## Mapa para el agrupamiento mediante K-means
+
+```{r}
+political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
+Encoding(political@data$NOMBRE) <- "UTF-8"
+political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
+
+grupos_barrios <- data.frame(barrio_nombre = db_salud_complete$encuesta_calidad.barrio, grupo = agrupamiento_kmeans$cluster)
+nombres_mapa <- data.frame(nombre_barrio = political$NOMBRE)
+
+vector_nombres = c()
+vector_grupos = c()
+
+for(nombre_mapa in nombres_mapa$nombre_barrio) {
+  grupo <- grupos_barrios[grupos_barrios$barrio_nombre == nombre_mapa, 2][1]
+  vector_nombres <- c(vector_nombres, nombre_mapa)
+  vector_grupos <- c(vector_grupos, grupo)
+}
+
+mapa_grupos <- data.frame(
+  nombre_barrio = vector_nombres, 
+  grupo = vector_grupos
+)
+
+factpal <- colorFactor(rainbow(k_optimo_kmeans), mapa_grupos$grupo)
+
+leaflet(data = political) %>% 
+  addTiles() %>% 
+  addProviderTiles(providers$OpenStreetMap) %>% 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos$grupo), 
+              label = as.character(political$NOMBRE),
+              popup = as.character(political$NOMBRE)) %>% 
+  addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
+```
+
 
 
 # Escritura
