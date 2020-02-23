@@ -1,9 +1,19 @@
 ---
 title: "Trabajo 1 TAE - Salud"
-author: "Nuestro equipo"
+author: "Luis Daniel Chavarría"
 date: "12/2/2020"
-output: html_document
-editor_options: 
+output:
+  html_document: 
+    df_print: kable
+    fig_caption: yes
+    fig_height: 10
+    fig_width: 12
+    highlight: haddock
+    theme: spacelab
+    toc: yes
+    toc_float: true
+    toc_collapsed: true
+editor_options:
   chunk_output_type: console
 ---
 
@@ -13,14 +23,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Librerías
 
-```{r, warnings = F}
+```{r, warning=FALSE, message=FALSE}
+library(raster)
 library(tidyverse)
 library(data.table)
 library(readxl)
 library(GGally)
 library(corrplot)
 library(leaflet)
-library(raster)
 ```
 
 # Lectura de datos
@@ -41,37 +51,30 @@ raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>%
 
 ```
 
-# Número de encuestados por barrio
+## Número de encuestados por barrio
 
 ```{r}
 raw_encuesta %>% 
   count(`encuesta_calidad.barrio`, sort = T) %>% 
-  arrange(n)
+  arrange(n) %>% 
+  head()
 ```
 
-# Podríamos necesitar imputar datos
+## Ver Summary
 
 ```{r}
 raw_encuesta %>% 
-  group_by(encuesta_calidad.barrio) %>% 
-  summarize(usables = sum(!is.na(`encuesta_calidad.p_341`))) %>%
-  arrange(usables)
-
-# Ver Summary
-raw_encuesta %>% select(`encuesta_calidad.p_341`) %>% summary()
+  dplyr::select(`encuesta_calidad.p_341`) %>% 
+  summary()
 ```
 
-Parece que será necesario imputar datos en algunos casos ya que hay muchos barrios importantes mal representados en este tipo de pregunta.
-
-## Creación de la base de datos
-
-# Discapacidad 
+## Análisis de Discapacidad 
 
 Con base en la cantidad de dos, se concluye que éste está asociado al "No", dado que se espera, en general, que el número de personas discapacitadas sea considerablemente menor al de no discapacitadas.
 
 ```{r}
 raw_encuesta %>% 
-select(paste0("encuesta_calidad.p_", 50:57)) %>%
+dplyr::select(paste0("encuesta_calidad.p_", 50:57)) %>%
   mutate_all(as_factor) %>% 
   summary()
 
@@ -79,7 +82,7 @@ preguntas_categoricas <- c("encuesta_calidad.p_266", "encuesta_calidad.p_326", "
                            "encuesta_calidad.p_335", "encuesta_calidad.p_338", "encuesta_calidad.p_341")
 ```
 
-# Limpieza de los datos
+# Limpieza de los nombres y one-hot encoding
 
 ```{r}
 encuesta_salud <- raw_encuesta %>% 
@@ -152,22 +155,6 @@ encuesta_salud <- raw_encuesta %>%
   )
 ```
 
-# Funciones propias
-
-```{r}
-# Función para la moda
-getmode <- function(v, na.rm = TRUE) {
-  if(na.rm == TRUE) {
-    v <- v[!is.na(v)]
-   uniqv <- unique(v)
-   uniqv[which.max(tabulate(match(v, uniqv)))]
-   } else {
-   uniqv <- unique(v)
-   uniqv[which.max(tabulate(match(v, uniqv)))]
-  }
-}
-```
-
 # Construcción de la base de datos
 
 ```{r}
@@ -224,11 +211,11 @@ db_salud <- encuesta_salud %>%
   mutate_at(factors, as_factor) %>% 
   filter(encuesta_calidad.barrio != "DESCONOCIDO")
 
-db_salud
+db_salud %>% 
+  head()
 ```
 
 # Estadística descriptiva
-
 
 ## Medias y cuartiles
 
@@ -240,7 +227,8 @@ summary(db_salud)
 db_salud %>% 
   group_by(encuesta_calidad.barrio) %>% 
   dplyr::summarize(media = mean(discapacidad), minimo = min(discapacidad), maximo = max(discapacidad)) %>% 
-  arrange(desc(maximo))
+  arrange(desc(maximo)) %>% 
+  head()
 ```
 
 ## ¿Cuáles son los barrios con menor representación?
@@ -248,7 +236,7 @@ db_salud %>%
 ```{r}
 db_salud %>% 
   arrange(n) %>% 
-  View()
+  head()
 ```
 
 Luego de identificar los barrios con pocas observaciones, se asumirá que el muestreo fue realizado correctamente y por lo tanto consideramos inclusive las muestras con 4 observaciones como significativas, por lo que no se alterarán las conclusiones con respecto a los máximos y mínimos por cada variable.
@@ -279,7 +267,7 @@ No se identifican correlaciones notorias entre las variables numéricas, se nota
 
 ### Caso 2 - Con one-hot encoding
 
->>Pendiente<<
+Pendiente
 
 ## Escalamiento de datos
 
@@ -320,7 +308,7 @@ agrupamiento_kmeans <- kmeans(clustering_salud, centers = k_seleccionado, nstart
 
 ## Análisis descriptivo de los grupos
 
-
+Falta
 
 ## Mapa para el agrupamiento mediante K-means
 
@@ -370,7 +358,7 @@ db_salud_jer <- bind_cols(db_salud, cluster = arbol_corte)
 split_db_salud <- split(db_salud, arbol_corte)
 ```
 
-## Mapa geográfico usando el agrupamiento (Agrupamiento Jerárquico)
+## Mapa geográfico usando el agrupamiento jerárquico
 
 ```{r}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
@@ -415,11 +403,11 @@ media_sd <- function(variable) {
 db_salud_jer %>%
   dplyr::select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>% 
   group_by(cluster) %>% 
-  summarise_all(~media_sd(.)) %>% View()
+  summarise_all(~media_sd(.))
 
 ```
 
-### Notas:
+### Notas del agrupamiento jerárquico
 
 - Cluster 1: 280 barrios
 
@@ -432,11 +420,13 @@ db_salud_jer %>%
   - Mayor cantidad de hospitalizaciones 1.5196 (0.6302)
   - Mayor proporción de calidad de las hospitalizaciones en nivel bueno 0.6566 (0.2334)
   
+  
 - Cluster 2: 19 barrios
 
   - Segunda mayor proporción de calidad consulta general buena 0.6424 (0.3672)
   - Segunda mayor proporción de calidad consulta especialista buena 0.5577 (0.425)
   - Menor número de asistencias a urgencias 1.0693 (1.2381)
+  
   
 - Cluster 3: 3 barrios
 
@@ -446,6 +436,7 @@ db_salud_jer %>%
   - Mayor número de consultas especialista 	2.8824 (1.0206)
   - Mayor proporción de calidad urgencias mala 0.5417 (0.5052)
   
+  
 - Cluster 4: 4 barrios
 
   - Mayor morbilidad en los últimos 30 días 0.3318 (0.1687)
@@ -454,6 +445,7 @@ db_salud_jer %>%
   - Mayor proporción de calidad de consulta buena 0.7624 (0.2448)
   - Mayor número de asistencias a urgencias 4.5781 (3.4586)
   - Menor cantidad de hospitalizaciones 0.25 (0.5)
+
 
 - Cluster 5: 2 barrios
 
