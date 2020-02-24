@@ -1,7 +1,9 @@
 ---
 title: "Trabajo 1 TAE - Salud"
-output: html_document
-editor_options: 
+output:
+  html_document: default
+  pdf_document: default
+editor_options:
   chunk_output_type: console
 ---
 
