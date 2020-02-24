@@ -6,8 +6,8 @@ output:
   html_document: 
     df_print: kable
     fig_caption: yes
-    fig_height: 10
-    fig_width: 12
+    fig_height: 8
+    fig_width: 10
     highlight: haddock
     theme: spacelab
     toc: yes
@@ -21,7 +21,9 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Librerías
+# Preparación y lectura de datos
+
+## Librerías
 
 ```{r, warning=FALSE, message=FALSE}
 library(raster)
@@ -33,7 +35,7 @@ library(corrplot)
 library(leaflet)
 ```
 
-# Lectura de datos
+## Lectura de datos
 
 ```{r}
 raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
@@ -51,23 +53,6 @@ raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>%
 
 ```
 
-## Número de encuestados por barrio
-
-```{r}
-raw_encuesta %>% 
-  count(`encuesta_calidad.barrio`, sort = T) %>% 
-  arrange(n) %>% 
-  head()
-```
-
-## Ver Summary
-
-```{r}
-raw_encuesta %>% 
-  dplyr::select(`encuesta_calidad.p_341`) %>% 
-  summary()
-```
-
 ## Análisis de Discapacidad 
 
 Con base en la cantidad de dos, se concluye que éste está asociado al "No", dado que se espera, en general, que el número de personas discapacitadas sea considerablemente menor al de no discapacitadas.
@@ -82,9 +67,9 @@ preguntas_categoricas <- c("encuesta_calidad.p_266", "encuesta_calidad.p_326", "
                            "encuesta_calidad.p_335", "encuesta_calidad.p_338", "encuesta_calidad.p_341")
 ```
 
-# Limpieza de los nombres y one-hot encoding
+## Limpieza de los nombres y one-hot encoding
 
-```{r}
+```{r, message=FALSE}
 encuesta_salud <- raw_encuesta %>% 
   mutate(discapacidad = case_when(encuesta_calidad.p_50 == 1 ~ 1,
                                   encuesta_calidad.p_51 == 1 ~ 1,
@@ -215,23 +200,67 @@ db_salud %>%
   head()
 ```
 
-# Estadística descriptiva
+# Descripción de las variables y análisis descriptivo de la base de datos construida
 
-## Medias y cuartiles
+La base de datos se ha construido agrupando las encuestas individuales de acuerdo al barrio y la comuna en que fueron realizadas, de ésta manera, se obtiena una base de datos con 308 observaciones (barrios) y 45 variables.
 
-Para la discapacidad
+## Descripción de las variables
+
+* `encuesta_calidad.barrio`: barrio analizado - unidad de análisis.
+
+* `encuesta_calidad.comuna`: comuna del barrio analizado.
+
+* `n`: número de respuestas de la encuesta de calidad de vida en el barrio correspondiente.
+
+* `discapacidad`: Proporción de personas encuestadas que presentan alguna discapacidad para caminar, usar brazos o manos, ver, si requiere aparatos especiales, hablar, entender o aprender, problemas emocionales o mentales o síndrome de down.
+
+* `acceso_salud`: El promedio de calificación en una escala de 1 (peor) a 5 (mejor) de cómo perciben las personas de este barrio en su hogar el acceso a la salud.
+
+* `calidad_salud (1-5)`: Estas variables son la proporción de personas en el barrio que seleccionaron diferentes categorías cuando les preguntaron por la calidad de los servicios de salud de la siguiente manera: Muy mala (1), Mala (2), Aceptable (3), Buena (4), Muy buena (5). La suma de las proporciones dentro de estas cinco variables siempre debe sumar 1 para cada barrio.
+
+* `morbilidad_30`: Proporción de personas dentro del barrio que respondió "Sí" a la siguiente pregunta: ¿En los últimos 30 días, tuvo alguna enfermedad, accidente, problema odontológico, o algún otro problema de salud que no haya implicado hospitalización?
+
+* `motivo_negacion (1-9)`: Proporción de personas encuestadas que respondió a la pregunta: Cuál fue la principal razón por la que no solicitó o no recibió atención por el problema de salud? con las categorías especificadas en la siguiente tabla:
+
+ categoría |	descripción
+--|------------------------
+1 | El caso era leve
+2 | No tuvo tiempo
+3 |	El centro de Atención en salud queda lejos
+4 |	Falta dinero
+5 |	Mal servicio o citas distanciadas en el tiempo
+6 | No lo atendieron
+7 |	No confía en los médicos o personal de salud
+8	| Consultó antes y no le resolvieron el problema
+9 |	Muchos trámites para la cita
+
+* `conteo_prevencion`: Mediana dentro del barrio del número de veces que los encuestados utilizaron servicios de promoción y prevención.
+
+* `calidad_prevencion (1-4)`: Estas variables son la proporción de personas en el barrio que seleccionaron diferentes categorías cuando les preguntaron por la calidad de los servicios de promoción y prevención de la siguiente manera: Mala (1), Regular (2), Buena (3), Excelente (4). La suma de las proporciones dentro de estas cinco variables siempre debe sumar 1 para cada barrio.
+
+* `consulta_medico_general`: Promedio dentro del barrio del número de veces que los encuestados acudieron a consultas de medicina general.
+
+* `calidad_med_general (1-4)`: Estas variables son la proporción de personas en el barrio que seleccionaron diferentes categorías cuando les preguntaron por la calidad de las consultas con médico general de la siguiente manera: Mala (1), Regular (2), Buena (3), Excelente (4). La suma de las proporciones dentro de estas cinco variables siempre debe sumar 1 para cada barrio.
+
+* `consulta_medico_especial`: Promedio dentro del barrio del número de veces que los encuestados acudieron a consultas de medicina especializada.
+
+* `calidad_med_especial (1-4)`: Estas variables son la proporción de personas en el barrio que seleccionaron diferentes categorías cuando les preguntaron por la calidad de las consultas con médico especialista de la siguiente manera: Mala (1), Regular (2), Buena (3), Excelente (4). La suma de las proporciones dentro de estas cinco variables siempre debe sumar 1 para cada barrio.
+
+* `consulta_urgencias`: Promedio dentro del barrio del número de veces que los encuestados acudieron a los servicios de urgencias.
+
+* `calidad_urgencias (1-4)`: Estas variables son la proporción de personas en el barrio que seleccionaron diferentes categorías cuando les preguntaron por la calidad de los servicios de urgencias de la siguiente manera: Mala (1), Regular (2), Buena (3), Excelente (4). La suma de las proporciones dentro de estas cinco variables siempre debe sumar 1 para cada barrio.
+
+* `hospitalizacion`: Promedio dentro del barrio del número de veces que los encuestados acudieron a los servicios de urgencias.
+
+* `calidad_hospitalizacion (1-4)`: Estas variables son la proporción de personas en el barrio que seleccionaron diferentes categorías cuando les preguntaron por la calidad de los servicios de hospitalización de la siguiente manera: Mala (1), Regular (2), Buena (3), Excelente (4). La suma de las proporciones dentro de estas cinco variables siempre debe sumar 1 para cada barrio.
+
+## Resumen de medias y cuartiles
 
 ```{r}
 summary(db_salud)
-
-db_salud %>% 
-  group_by(encuesta_calidad.barrio) %>% 
-  dplyr::summarize(media = mean(discapacidad), minimo = min(discapacidad), maximo = max(discapacidad)) %>% 
-  arrange(desc(maximo)) %>% 
-  head()
 ```
 
-## ¿Cuáles son los barrios con menor representación?
+## Barrios con menor representación y notas en el tamaño de muestra
 
 ```{r}
 db_salud %>% 
@@ -243,9 +272,7 @@ Luego de identificar los barrios con pocas observaciones, se asumirá que el mue
 
 ## Análisis de correlación
 
-```{r}
-glimpse(db_salud)
-
+```{r, fig.width=12, fig.height=10}
 salud_cor <- db_salud %>%
   select_if(is.numeric) %>% 
   dplyr::select(-n) %>%
@@ -253,21 +280,23 @@ salud_cor <- db_salud %>%
   cor()
 
 corrplot(salud_cor, type = "upper", order = "hclust", tl.col = "black", tl.srt = 45)
-
-# Mapa gigante de correlación con factores y números Inviable por número de variables
-# db_salud %>% 
-#   select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>%
-#   ggpairs(aes(alpha = 0.4))
-
 ```
 
-### Caso 1 - Sin one-hot encoding
+No se identifican gran cantidad de variables correlacionadas. Seleccionemos ahora las variables de interés a partir del gráfico de correlación para ver sus gráficos de dispersión y correlaciones exactas.
 
-No se identifican correlaciones notorias entre las variables numéricas, se nota que hay ciertas variables con distribuciones marcadas, como el acceso a salud con una función de densidad de probabilidad muy similar a la distribución normal y otras variables con distribuciones con sesgos hacia la izquierda.
+```{r, fig.width=12, fig.height=10}
+ggpairs(data = db_salud %>% 
+          dplyr::select(acceso_salud,
+                        calidad_salud_1,
+                        calidad_salud_3,
+                        calidad_salud_4,
+                        calidad_salud_5),
+       mapping = aes(alpha = 0.7))
+```
 
-### Caso 2 - Con one-hot encoding
+De todas las proporciones graficadas, la calidad percibida de la salud es la más correlacionada con el acceso a ésta.
 
-Pendiente
+Este resultado es esperado ya que las preguntas son similares en el sentido de que ambas son calificaciones percibidas dadas por el encuestado.
 
 ## Escalamiento de datos
 
@@ -277,6 +306,9 @@ salud_scaled <- db_salud %>%
 ```
 
 # Agrupamiento mediante k-Means
+
+Se utilizará la metodología de Elbow para identificar el k óptimo que ofreza una menor distancia entre clusters como medida de error `wss`.
+
 ```{r}
 clustering_salud <- salud_scaled %>% 
   dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna)
@@ -297,22 +329,21 @@ k_optimo_kmeans <- 10
 k_seleccionado <- 5
 ```
 
-Para favorecer la interpretabilidad y teniendo en cuenta que no hay agrupamientos incorrectos, se decide utilizar `k_seleccionado` grupos y realizar su análisis descriptivo que permita llegar a conclusiones dicientes de los barrios analizados.
+Para favorecer la interpretabilidad y teniendo en cuenta que no hay agrupamientos incorrectos, se decide utilizar `r k_seleccionado` grupos y realizar su análisis descriptivo que permita llegar a conclusiones dicientes de los barrios analizados.
 
 ## Agrupamiento con $K$ seleccionado 
 
+Se fija la semilla de números aleatorios para garantizar la reproducibilidad de las conclusiones del agrupamiento, dado que el algoritmo k-Means toma grupos iniciales aleatorios para cada `n_start`.
 
 ```{r}
-agrupamiento_kmeans <- kmeans(clustering_salud, centers = k_seleccionado, nstart = 10, iter.max = 15 )
+set.seed(3)
+agrupamiento_kmeans <- kmeans(clustering_salud, centers = k_seleccionado, nstart = 10, iter.max = 15)
+db_salud_kmeans <- bind_cols(db_salud, cluster = agrupamiento_kmeans$cluster)
 ```
-
-## Análisis descriptivo de los grupos
-
-Falta
 
 ## Mapa para el agrupamiento mediante K-means
 
-```{r}
+```{r, fig.width=10, fig.height=9}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
 Encoding(political@data$NOMBRE) <- "UTF-8"
 political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
@@ -329,23 +360,108 @@ for(nombre_mapa in nombres_mapa$nombre_barrio) {
   vector_grupos <- c(vector_grupos, grupo)
 }
 
-mapa_grupos <- data.frame(
+
+factpal <- colorFactor(rainbow(k_seleccionado), vector_grupos)
+
+mapa_grupos <- tibble(
   nombre_barrio = vector_nombres, 
-  grupo = vector_grupos
+  grupo = vector_grupos,
+  color = factpal(grupo),
+  descripcion = case_when(
+    grupo == 1 ~ "Grupo 1: Alto uso de recursos, mayor discapacidad",
+    grupo == 2 ~ "Grupo 2: Bajo uso de recursos - Periferia",
+    grupo == 3 ~ "Grupo 3: Mayor calidad y acceso a salud",
+    grupo == 4 ~ "Grupo 4: Enfoque en Prevención",
+    grupo == 5 ~ "Grupo 5: Alta morbilidad y baja percepción de calidad",
+    TRUE ~ "Sin muestra representativa")
 )
 
-factpal <- colorFactor(rainbow(k_optimo_kmeans), mapa_grupos$grupo)
+colores <- mapa_grupos %>%
+  dplyr::select(-nombre_barrio) %>% 
+  distinct(color, .keep_all = TRUE) %>% 
+  arrange(desc(grupo))
 
 leaflet(data = political) %>% 
   addTiles() %>% 
   addProviderTiles(providers$OpenStreetMap) %>% 
-  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos$grupo), 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = mapa_grupos$color, 
               label = as.character(political$NOMBRE),
               popup = as.character(political$NOMBRE)) %>% 
-  addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
+  addLegend("bottomright", colors = colores$color, labels = as.character(colores$descripcion))
 ```
 
+## Análisis descriptivo de los grupos obtenidos con k-means
+
+Para este análisis se utiliza la siguiente convención de medidas descriptivas: media (desviación estándar)
+
+```{r}
+media_sd <- function(variable) {
+  paste0(round(mean(variable), 4), " (", round(sd(variable), 4), ")")
+}
+
+db_salud_kmeans %>%
+  dplyr::select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>% 
+  group_by(cluster) %>% 
+  summarise_all(~media_sd(.))
+```
+
+
+* <span style="color:`r colores$color[5]`">**Grupo 1: Alto uso de recursos, mayor discapacidad - 27 barrios**</span>
+
+Es un grupo con alto uso de recursos dado que son los que más consultas y urgencias presentan, además de la más alta discapacidad (10.4%). En general, este grupo percibió que tiene un acceso a salud menor que los demás. Es un grupo que geográficamente se encuentra en la periferia del Valle de Aburrá y en algunos barrios del centro de la ciudad.
+
+  + Mayor número de consultas 3.5932 (1.5984)
+  + Mayor proporción de calidad de consulta buena 0.8653 (0.1567)
+  + Grupo con mayor proporción de discapacidad, 0.1039 (0.0989)
+  + Menor acceso a salud 2.7959 (0.2405)
+  + Mayor percepción de la calidad de la salud mala 0.1141 (0.127)
+  + Mayor negación de la atención por tramitología excesiva 0.1111 (0.3203)
+  + Mayor uso de programas de prevención 2.3148 (2.4696)
+  + Mayor número de asistencias a urgencias 2.341 (1.9364)
+  + Mayor percepción de la calidad de urgencias buena 0.6575 (0.382)
+
+* <span style="color:`r colores$color[4]`">**Grupo 2: Bajo uso de recursos - Periferia - 6 barrios**</span>
+
+Es un grupo que en general hace un uso diferencialmente menor del sistema de salud, esto sustentado en que atienden menos a consultas, programas de prevención, urgencias y hospitalizaciones. Es un grupo que geográficamente está en la periferia del valle de Aburrá, por lo que probablemente hacen uso de los servicios de salud de otros municipios.
+
+  + Menor uso de programas de prevención 0.1667 (0.4082)
+  + Menor número de consultas 0.9375 (1.4572)
+  + Menor número de asistencias a urgencias 0.3889 (0.9526)
+  + Menor cantidad de hospitalizaciones 0.1667 (0.4082)
+
+* <span style="color:`r colores$color[3]`">**Grupo 3: Mayor calidad y acceso a salud - 47 barrios**</span>
+
+Es un grupo que se caracteriza por tener un acceso a la salud considerablemente mayor que los demás, además de que en general calificaron en proporciones altas la calidad de la atención recibida en servicios de consulta y hospitalizaciones como excelente, además de los servicios generales de salud. Es un grupo particularmente concentrado en la comuna 14 - El Poblado y la comuna 11 - Laureles-Estadio.
+
+  + Mayor acceso a salud 3.1303 (0.2539)
+  + Mayor percepción de la calidad de la salud excelente 0.1169 (0.0483)
+  + Mayor proporción de calidad de consulta especilista excelente 0.2719 (0.1832)
+  + Mayor proporción de calidad de las hospitalizaciones en nivel excelente 0.2186 (0.2335)
+  
+* <span style="color:`r colores$color[2]`">**Grupo 4: Enfoque en Prevención - 10 barrios**</span>
+
+Es un grupo con un acceso a la salud ligeramente mayor a la media, con enfoque diferencial en el uso de programas de prevención, presenta las mayores negaciones de atenciones debido a la falta de dinero y la desconfianza en el personal médico, el 64.6% de éstos considera que sus programas de prevención son buneos y el 19% los considera excelentes. El 73.32% de este grupo considera que sus atenciones en consulta general han sido buenas.
+
+  + Mayor negación de atención por falta de dinero 0.2065 (0.2006)
+  + Mayor negación de atención por desconfianza del personal médico 0.5419 (0.2033)
+  + Mayor percepción de la calidad de los programas de prevención excelentes 0.1903 (0.3005)
+  + Segunda mayor percepción de la calidad de la consulta general buena 0.7332 (0.0672)
+  
+* <span style="color:`r colores$color[1]`">**Grupo 5: Alta morbilidad y baja percepción de calidad 218 barrios**</span>
+
+Es el grupo con mayor porcentaje de morbilidad y con más barrios de la ciudad, la mayoría de éstos considera que los programas de prevención son buenos 79.02%. Sin embargo, padecen un mayor número de hospitalizaciones y atienden a más consultas con especialistas que el resto de los grupos.
+
+  + Mayor morbilidad en los últimos 30 días 0.1541 (0.0535)
+  + Mayor negación de atención porque el caso era leve 0.3791 (0.2817)
+  + Mayor calidad de la prevención en nivel bueno 0.7902 (0.1376)
+  + Mayor proporción de calidad de consulta general mala 0.0649 (0.0585)
+  + Mayor número de consultas especialista 	2.3941 (0.6001)
+  + Mayor proporción de calidad urgencias mala 0.1942 (0.1009)
+  + Mayor número de hospitalizaciones 1.5599 (0.5844)
+  
 # Agrupamiento Jerárquico
+
+En general no se concluirá con respecto a los resultados del agrupamiento jerárquico, ya que éste no logró distinguir entre grupos de interés y asocia más de 270 barrios en una categoría a pesar de contar con características diferentes.
 
 ```{r}
 cantidad_grupos_jerarquico <- 5
@@ -360,7 +476,7 @@ split_db_salud <- split(db_salud, arbol_corte)
 
 ## Mapa geográfico usando el agrupamiento jerárquico
 
-```{r}
+```{r, echo=FALSE}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
 Encoding(political@data$NOMBRE) <- "UTF-8"
 political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
@@ -377,25 +493,33 @@ for(nombre_mapa in nombres_mapa$nombre_barrio) {
   vector_grupos_jer <- c(vector_grupos_jer, grupo)
 }
 
-mapa_grupos_jer <- data.frame(
-  nombre_barrio = vector_nombres, 
-  grupo = vector_grupos
+factpal_jer <- colorFactor(rainbow(cantidad_grupos_jerarquico), vector_grupos_jer)
+
+mapa_grupos_jer <- tibble(
+  nombre_barrio = vector_nombres_jer, 
+  grupo = vector_grupos_jer,
+  color = factpal_jer(grupo)
 )
 
-factpal <- colorFactor(rainbow(cantidad_grupos_jerarquico), mapa_grupos_jer$grupo)
+colores_jer <- mapa_grupos_jer %>% 
+  distinct(color, .keep_all = TRUE) %>% 
+  arrange(desc(grupo))
+
 
 leaflet(data = political) %>% 
   addTiles() %>% 
   addProviderTiles(providers$OpenStreetMap) %>% 
-  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos_jer$grupo), 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = mapa_grupos_jer$color, 
               label = as.character(political$NOMBRE),
               popup = as.character(political$NOMBRE)) %>% 
-  addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
+  addLegend("bottomright", colors = colores_jer$color, labels = as.character(colores_jer$grupo))
 ```
 
-## Estadística descriptiva de los grupos obtenidos con el algoritmo jerárquico
+## Análisis descriptivo de los grupos obtenidos con el algoritmo jerárquico
 
-```{r}
+Se presentan igualmente las medias y desviaciones estándar de cada grupo utilizando el agrupamiento jerárquico.
+
+```{r, echo=FALSE}
 media_sd <- function(variable) {
   paste0(round(mean(variable), 4), " (", round(sd(variable), 4), ")")
 }
@@ -404,60 +528,10 @@ db_salud_jer %>%
   dplyr::select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>% 
   group_by(cluster) %>% 
   summarise_all(~media_sd(.))
-
 ```
-
-### Notas del agrupamiento jerárquico
-
-- Cluster 1: 280 barrios
-
-  - Mayor acceso a salud 2.9678 (0.1586)
-  - Mayor calidad salud en nivel 4, 0.3399 (0.0663)
-  - Mayor negación de atención porque el caso era leve 0.3592 (0.3146)
-  - Mayor calidad de la prevención en nivel bueno, 0.7839 (0.1651)
-  - Mayor proporción de calidad de consulta especilista buena 0.7111 (0.1166)
-  - Mayor proporción de calidad de urgencias buena 0.5654 (0.151)
-  - Mayor cantidad de hospitalizaciones 1.5196 (0.6302)
-  - Mayor proporción de calidad de las hospitalizaciones en nivel bueno 0.6566 (0.2334)
-  
-  
-- Cluster 2: 19 barrios
-
-  - Segunda mayor proporción de calidad consulta general buena 0.6424 (0.3672)
-  - Segunda mayor proporción de calidad consulta especialista buena 0.5577 (0.425)
-  - Menor número de asistencias a urgencias 1.0693 (1.2381)
-  
-  
-- Cluster 3: 3 barrios
-
-  - Menor uso de programas de prevención 0.6667 (1.1547)
-  - Mayor número de consultas 6.8425 por mucho (2.6065)
-  - Mayor proporción de calidad de consulta general mala 0.4261 (0.2337)
-  - Mayor número de consultas especialista 	2.8824 (1.0206)
-  - Mayor proporción de calidad urgencias mala 0.5417 (0.5052)
-  
-  
-- Cluster 4: 4 barrios
-
-  - Mayor morbilidad en los últimos 30 días 0.3318 (0.1687)
-  - Mayor negación de atención por falta de dinero 0.1389 (0.2778)
-  - Segundo mayor número de consultas 3.3943 (2.326)
-  - Mayor proporción de calidad de consulta buena 0.7624 (0.2448)
-  - Mayor número de asistencias a urgencias 4.5781 (3.4586)
-  - Menor cantidad de hospitalizaciones 0.25 (0.5)
-
-
-- Cluster 5: 2 barrios
-
-  - tiene mayor proporción de discapacidad, 0.4 (0.1414)
-  - Mayor uso de programas de prevención 2 (0)
-  - Menor número de consultas 2 (1.4142)
-
-
-# Escritura
 
 ```{r, include = F}
 write_excel_csv2(db_salud, "databases/db_salud.csv")
-write_excel_csv2(db_salud[complete.cases(db_salud),], "databases/db_salud_completecases.csv")
+write_excel_csv2(db_salud_kmeans, "databases/db_salud_kmeans.csv")
 ```
 
