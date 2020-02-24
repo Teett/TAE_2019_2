@@ -6,8 +6,8 @@ output:
   html_document: 
     df_print: kable
     fig_caption: yes
-    fig_height: 10
-    fig_width: 12
+    fig_height: 8
+    fig_width: 10
     highlight: haddock
     theme: spacelab
     toc: yes
@@ -222,9 +222,10 @@ La base de datos se ha construido agrupando las encuestas individuales de acuerd
 
 * `motivo_negacion (1-9)`: Proporción de personas encuestadas que respondió a la pregunta: Cuál fue la principal razón por la que no solicitó o no recibió atención por el problema de salud? con las categorías especificadas en la siguiente tabla:
 
-1 |	El caso era leve
---|-----------------
-2 |	No tuvo tiempo
+ categoría |	descripción
+--|------------------------
+1 | El caso era leve
+2 | No tuvo tiempo
 3 |	El centro de Atención en salud queda lejos
 4 |	Falta dinero
 5 |	Mal servicio o citas distanciadas en el tiempo
@@ -271,9 +272,7 @@ Luego de identificar los barrios con pocas observaciones, se asumirá que el mue
 
 ## Análisis de correlación
 
-```{r}
-glimpse(db_salud)
-
+```{r, fig.width=12, fig.height=10}
 salud_cor <- db_salud %>%
   select_if(is.numeric) %>% 
   dplyr::select(-n) %>%
@@ -285,7 +284,7 @@ corrplot(salud_cor, type = "upper", order = "hclust", tl.col = "black", tl.srt =
 
 No se identifican gran cantidad de variables correlacionadas. Seleccionemos ahora las variables de interés a partir del gráfico de correlación para ver sus gráficos de dispersión y correlaciones exactas.
 
-```{r}
+```{r, fig.width=12, fig.height=10}
 ggpairs(data = db_salud %>% 
           dplyr::select(acceso_salud,
                         calidad_salud_1,
@@ -330,7 +329,7 @@ k_optimo_kmeans <- 10
 k_seleccionado <- 5
 ```
 
-Para favorecer la interpretabilidad y teniendo en cuenta que no hay agrupamientos incorrectos, se decide utilizar `k_seleccionado` grupos y realizar su análisis descriptivo que permita llegar a conclusiones dicientes de los barrios analizados.
+Para favorecer la interpretabilidad y teniendo en cuenta que no hay agrupamientos incorrectos, se decide utilizar `r k_seleccionado` grupos y realizar su análisis descriptivo que permita llegar a conclusiones dicientes de los barrios analizados.
 
 ## Agrupamiento con $K$ seleccionado 
 
@@ -344,7 +343,7 @@ db_salud_kmeans <- bind_cols(db_salud, cluster = agrupamiento_kmeans$cluster)
 
 ## Mapa para el agrupamiento mediante K-means
 
-```{r}
+```{r, fig.width=10, fig.height=9}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
 Encoding(political@data$NOMBRE) <- "UTF-8"
 political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
@@ -393,20 +392,17 @@ leaflet(data = political) %>%
 
 ## Análisis descriptivo de los grupos obtenidos con k-means
 
-Para este análisis se utiliza la siguiente convención de medidas descriptivas: media (desviación estándar), ejemplo: 1.1 (2.3)
+Para este análisis se utiliza la siguiente convención de medidas descriptivas: media (desviación estándar)
 
 ```{r}
 media_sd <- function(variable) {
-  paste0(round(mean(variable), 4), " (", round(sd(variable), 4), ")", n())
+  paste0(round(mean(variable), 4), " (", round(sd(variable), 4), ")")
 }
 
 db_salud_kmeans %>%
   dplyr::select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>% 
   group_by(cluster) %>% 
   summarise_all(~media_sd(.))
-
-
-
 ```
 
 
@@ -532,7 +528,6 @@ db_salud_jer %>%
   dplyr::select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>% 
   group_by(cluster) %>% 
   summarise_all(~media_sd(.))
-
 ```
 
 ```{r, include = F}
