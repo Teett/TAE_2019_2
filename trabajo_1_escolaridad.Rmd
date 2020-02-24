@@ -354,13 +354,16 @@ mapa_grupos <- data.frame(
 
 factpal <- colorFactor(rainbow(k_optimo_kmeans), mapa_grupos$grupo)
 
+array_grupos <- paste("Grupo", 1:k_optimo_kmeans)
+colores <- sapply(1:k_optimo_kmeans, factpal)
+
 leaflet(data = political) %>% 
   addTiles() %>% 
   addProviderTiles(providers$OpenStreetMap) %>% 
   addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos$grupo), 
               label = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo)),
               popup = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo))) %>% 
-  addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
+  addLegend("bottomright", colors = colores, labels = array_grupos)
 ```
 
 ## Análisis del agrupamiento
@@ -486,13 +489,16 @@ mapa_grupos <- data.frame(
 
 factpal <- colorFactor(rainbow(cantidad_grupos_jerarquico), mapa_grupos$grupo)
 
+array_grupos <- paste("Grupo", 1:cantidad_grupos_jerarquico)
+colores <- sapply(1:cantidad_grupos_jerarquico, factpal)
+
 leaflet(data = political) %>% 
   addTiles() %>% 
   addProviderTiles(providers$OpenStreetMap) %>% 
   addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos$grupo), 
               label = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo)),
               popup = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo))) %>% 
-  addLegend("bottomright", colors = "#03F", labels = "Barrios y veredas")
+  addLegend("bottomright", colors = colores, labels = array_grupos)
 ```
 
 Desde un punto de vista general, el agrupamietno jeráriquico muestra un comportamiento muy similar al que se obtuvo mediante el algoritmo K-Means, pues podemos ver que la zona que comprende los barrios aledaños al Poblado pertenece a un mismo grupo, mientras que las zonas correspondientes a barrios con oportunidades económicas bajas quedo en otro grupo. Además los grupos con una calidad educativa intermedia, como lo son los barrios aledaños a La Castellana, Laureles, La Loma de los Bernal y Buenos Aires, quedaron en un mismo grupo.
