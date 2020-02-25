@@ -11,7 +11,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# LibrerÌas
+# Librer√≠as
 
 ```{r message = FALSE, warning = FALSE}
 library(raster)
@@ -38,15 +38,15 @@ Inicialmente, para la lectura de datos, se requieren unos cambios en los nombres
 raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
   as_tibble()
 
-# UnificaciÛn de las estadÌsticas de los barrios "ALTAVISTA" y "CABECERA ALTAVISTA"
+# Unificaci√≥n de las estad√≠sticas de los barrios "ALTAVISTA" y "CABECERA ALTAVISTA"
 
 raw_encuesta <- raw_encuesta %>% mutate(
   encuesta_calidad.barrio = case_when(
     encuesta_calidad.barrio == "CABECERA ALTAVISTA" ~ "ALTAVISTA",
-    encuesta_calidad.barrio == "CIUDADELA NUEVO OCCIDENTE" ~ "CABECERA URBANA CORREGIMIENTO SAN CRIST”BAL",
-    encuesta_calidad.barrio == "AREA DE EXPANCION SAN CRISTOBAL" ~ "¡REA DE EXPANSI”N SAN CRIST”BAL",
-    encuesta_calidad.barrio == "CABECERA SAN CRIST”BAL" ~ "CABECERA URBANA CORREGIMIENTO SAN CRIST”BAL",
-    encuesta_calidad.barrio == "SAN CRISTOBAL" ~ "CABECERA URBANA CORREGIMIENTO SAN CRIST”BAL",
+    encuesta_calidad.barrio == "CIUDADELA NUEVO OCCIDENTE" ~ "CABECERA URBANA CORREGIMIENTO SAN CRIST√ìBAL",
+    encuesta_calidad.barrio == "AREA DE EXPANCION SAN CRISTOBAL" ~ "√ÅREA DE EXPANSI√ìN SAN CRIST√ìBAL",
+    encuesta_calidad.barrio == "CABECERA SAN CRIST√ìBAL" ~ "CABECERA URBANA CORREGIMIENTO SAN CRIST√ìBAL",
+    encuesta_calidad.barrio == "SAN CRISTOBAL" ~ "CABECERA URBANA CORREGIMIENTO SAN CRIST√ìBAL",
     encuesta_calidad.barrio == "PROGRESO  N¬∫ 2" ~ "PROGRESO",
     TRUE ~ encuesta_calidad.barrio
   )
@@ -63,9 +63,9 @@ variables_categoricas_encoding <- one_hot(as.data.table(variables_categoricas))
 raw_encuesta <- data.frame(raw_encuesta, variables_categoricas_encoding)
 ```
 
-# CreaciÛn de la base de datos
+# Creaci√≥n de la base de datos
 
-La creaciÛn de la base de datos se hace con base en las preguntas pertenecientes a la dimensiÛn "Libertad y Seguridad", esta clasificaciÛn de las preguntas se hizo a criterio del equipo con la ayuda del informe escrito por la AlcaldÌa de MedellÌn durante el planteamiento de la encuesta.
+La creaci√≥n de la base de datos se hace con base en las preguntas pertenecientes a la dimensi√≥n "Libertad y Seguridad", esta clasificaci√≥n de las preguntas se hizo a criterio del equipo con la ayuda del informe escrito por la Alcald√≠a de Medell√≠n durante el planteamiento de la encuesta.
 
 ```{r}
 encuesta_seguridad <- raw_encuesta%>%
@@ -79,55 +79,55 @@ encuesta_seguridad <- raw_encuesta%>%
                           TRUE~0))
 
 db_LibertadySeguridad <- encuesta_seguridad %>% 
-  mutate(encuesta_calidad.barrio = str_replace(encuesta_calidad.barrio, "ANDALUCIA", "ANDALUCÕA") %>% 
-  str_replace("N∫ 2", "NO.2") %>% 
-  str_replace("N∫ 1", "NO.1") %>% 
-  str_replace("N∫ 3", "NO.3") %>%
-  str_replace("AREA EXPANSION", "¡REA DE EXPANSI”N") %>%
-  str_replace("EXPANCION", "EXPANSI”N") %>% 
-  str_replace("AREA", "¡REA") %>% 
-  str_replace("BOMBONA", "BOMBON¡") %>% 
+  mutate(encuesta_calidad.barrio = str_replace(encuesta_calidad.barrio, "ANDALUCIA", "ANDALUC√çA") %>% 
+  str_replace("N¬∫ 2", "NO.2") %>% 
+  str_replace("N¬∫ 1", "NO.1") %>% 
+  str_replace("N¬∫ 3", "NO.3") %>%
+  str_replace("AREA EXPANSION", "√ÅREA DE EXPANSI√ìN") %>%
+  str_replace("EXPANCION", "EXPANSI√ìN") %>% 
+  str_replace("AREA", "√ÅREA") %>% 
+  str_replace("BOMBONA", "BOMBON√Å") %>% 
   str_replace("LA ASOMADERA", "ASOMADERA") %>%
-  str_replace("BELALCAZAR", "BELALC¡ZAR") %>% 
+  str_replace("BELALCAZAR", "BELALC√ÅZAR") %>% 
   str_replace("CALAZANS", "CALASANZ") %>% 
-  str_replace("COLON", "COL”N") %>% 
+  str_replace("COLON", "COL√ìN") %>% 
   str_replace("MIRA FLORES", "MIRAFLORES") %>% 
   str_replace("BARRIO FACULTAD DE MINAS", "FACULTAD DE MINAS") %>% 
   str_replace("CABECERA SAN ANT DE PR.", "SAN ANTONIO DE PRADO") %>% 
   str_replace("CARLOS E RESTREPO", "CARLOS E. RESTREPO") %>% 
-  str_replace("URQUITA", "URQUIT¡") %>% 
+  str_replace("URQUITA", "URQUIT√Å") %>% 
   str_replace("LOS CERROS EL VERJEL", "LOS CERROS EL VERGEL") %>% 
   str_replace("CAYCEDO", "CAICEDO") %>% 
-  str_replace("VALDES", "VALD…S") %>% 
+  str_replace("VALDES", "VALD√âS") %>% 
   str_replace("CERRO EL VOLADOR", "B. CERRO EL VOLADOR") %>% 
-  str_replace("MOSCU", "MOSC⁄") %>% 
-  str_replace("JOSELA", "JOS… LA") %>%
-  str_replace("JOSE", "JOS…") %>% 
+  str_replace("MOSCU", "MOSC√ö") %>% 
+  str_replace("JOSELA", "JOS√â LA") %>%
+  str_replace("JOSE", "JOS√â") %>% 
   str_replace("EL YOLOMBO", "YOLOMBO") %>% 
   str_replace("PIEDRAS BLANCAS", "PIEDRAS BLANCAS - MATASANO") %>% 
   str_replace("BASILIA", "BRASILIA") %>% 
   str_replace("VILLA TINA", "VILLATINA") %>% 
   str_replace("LILIAM", "LILLIAM") %>% 
-  str_replace("BOLIVAR", "BOLÕVAR") %>% 
+  str_replace("BOLIVAR", "BOL√çVAR") %>% 
   str_replace("CORREGIMIENTO PALMITAS", "PALMITAS SECTOR CENTRAL") %>% 
-  str_replace("INES", "IN…S") %>% 
-  str_replace("FE", "F…") %>% 
-  str_replace("LUCIA", "LUCÕA") %>% 
+  str_replace("INES", "IN√âS") %>% 
+  str_replace("FE", "F√â") %>% 
+  str_replace("LUCIA", "LUC√çA") %>% 
   str_replace("SABIO", "SAVIO") %>% 
-  str_replace("BERMEJAL- LOS ¡LAMOS", "BERMEJAL-LOS ¡LAMOS") %>% 
-  str_replace("BOLÕVARIANA", "BOLIVARIANA") %>% 
+  str_replace("BERMEJAL- LOS √ÅLAMOS", "BERMEJAL-LOS √ÅLAMOS") %>% 
+  str_replace("BOL√çVARIANA", "BOLIVARIANA") %>% 
   str_replace("EL NOGAL - LOS ALMENDROS", "EL NOGAL-LOS ALMENDROS") %>% 
   str_replace("JUAN XXIII - LA QUIEBRA", "JUAN XXIII LA QUIEBRA") %>% 
-  str_replace("PROGRESO  N∫ 2", "EL PROGRESO") %>% 
-  str_replace("MARIA", "MARÕA") %>% 
-  str_replace("PLAY”N", "PLAYON") %>% 
+  str_replace("PROGRESO  N¬∫ 2", "EL PROGRESO") %>% 
+  str_replace("MARIA", "MAR√çA") %>% 
+  str_replace("PLAY√ìN", "PLAYON") %>% 
   str_replace("EL SOCORRO / LA GABRIELA", "EL SOCORRO") %>% 
-  str_replace("F…RRINI", "FERRINI") %>% 
+  str_replace("F√âRRINI", "FERRINI") %>% 
   str_replace("LA CANDE LARIA", "LA CANDELARIA") %>%
-  str_replace("EL PLAYON", "PLAY”N") %>%
-  str_replace("IGUANA", "IGUAN¡") %>%
-  str_replace("MARÕA CANO - CARAMBOLAS", "MARÕA CANO-CARAMBOLAS") %>%
-  str_replace("DE ABURRA", "DEL ABURR¡") %>%
+  str_replace("EL PLAYON", "PLAY√ìN") %>%
+  str_replace("IGUANA", "IGUAN√Å") %>%
+  str_replace("MAR√çA CANO - CARAMBOLAS", "MAR√çA CANO-CARAMBOLAS") %>%
+  str_replace("DE ABURRA", "DEL ABURR√Å") %>%
   str_replace("ALTAVISTA CENTRAL", "ALTAVISTA SECTOR CENTRAL") %>%
   str_replace("SECTOR CENTRAL", "CENTRO ADMINISTRATIVO") %>%
   str_replace("ALTAVISTA CENTRO ADMINISTRATIVO", "ALTAVISTA SECTOR CENTRAL") %>%
@@ -165,58 +165,58 @@ write_excel_csv2(db_LibertadySeguridad, "databases/db_LibertadySeguridad.csv")
 
 # Descripcion de las variables seleccionadas
 
-**accidentalidad**: Esta variable hace referencia a la proporciÛn de personas que sufrieron alg˙n tipo de accidente en los ˙ltimos 12 meses desde que fueron encuestados en los diferentes barrios.  
+**accidentalidad**: Esta variable hace referencia a la proporci√≥n de personas que sufrieron alg√∫n tipo de accidente en los √∫ltimos 12 meses desde que fueron encuestados en los diferentes barrios.  
 
-**movilidad_libre**: Esta variable hace referencia a la posibilidad de moverse libremente en su barrio o vereda, siendo 1 muy poca libertad y 5 hay mucha libertad. Para esta variable se decidiÛ sacar proporciones desde la primera opciÛn hasta la quinta opciÛn entre los barrios de MedellÌn y poder observar acerca de la libertad de poder moverse en su barrio o vereda.   
+**movilidad_libre**: Esta variable hace referencia a la posibilidad de moverse libremente en su barrio o vereda, siendo 1 muy poca libertad y 5 hay mucha libertad. Para esta variable se decidi√≥ sacar proporciones desde la primera opci√≥n hasta la quinta opci√≥n entre los barrios de Medell√≠n y poder observar acerca de la libertad de poder moverse en su barrio o vereda.   
 
-**satisfaccion_barrio**: Esta variable hace referencia a que tan bien se sienten los encuestados en el barrio o vereda donde viven siendo 1 muy seguro, 2 seguro, y 3 inseguro. Para esta variable se decidiÛ sacar la proporciones desde la primera opciÛn hasta la tercera opciÛn entre los barrios acerca de la seguridad en el barrio o vereda donde viven.  
+**satisfaccion_barrio**: Esta variable hace referencia a que tan bien se sienten los encuestados en el barrio o vereda donde viven siendo 1 muy seguro, 2 seguro, y 3 inseguro. Para esta variable se decidi√≥ sacar la proporciones desde la primera opci√≥n hasta la tercera opci√≥n entre los barrios acerca de la seguridad en el barrio o vereda donde viven.  
 
-**problemas_seguridad**: Esta variable hace referencia a los problemas m·s graves para el encuestado en relaciÛn con la seguridad que se presenta en su barrio, corregimiento o vereda donde vive. Esta variable tiene 15 opciones de respuesta que vendrÌan siendo los diferentes posibles problemas que se presentan, los cuales son: Existencia y accionar de bandas o combos(OpciÛn 1), atracos callejeros(OpciÛn 2), robos a carros(OpciÛn 3), asaltos a casas/apartamentos(OpciÛn 4), atracos en tiendas del barrios(OpciÛn 5), homicidios(OpciÛn 6), tr·fico de drogas(OpciÛn 7), casos de violaciones(OpciÛn 8), vandalismo(opciÛn 9), milicias(OpciÛn 10), extorciones(OpciÛn 11), desapariciones(OpciÛn 12), violencia intrafamiliar(OpciÛn 13), Ninguno(OpciÛn 14). Para esta variable se calculÛ las casillas con la opciÛn 14 tom·ndolas como 0's siendo "No tuvo problemas graves" y el resto como 1's siendo "Con problemas graves" y se calculÛ la proporciÛn de problemas graves sobre los totales.   
+**problemas_seguridad**: Esta variable hace referencia a los problemas m√°s graves para el encuestado en relaci√≥n con la seguridad que se presenta en su barrio, corregimiento o vereda donde vive. Esta variable tiene 15 opciones de respuesta que vendr√≠an siendo los diferentes posibles problemas que se presentan, los cuales son: Existencia y accionar de bandas o combos(Opci√≥n 1), atracos callejeros(Opci√≥n 2), robos a carros(Opci√≥n 3), asaltos a casas/apartamentos(Opci√≥n 4), atracos en tiendas del barrios(Opci√≥n 5), homicidios(Opci√≥n 6), tr√°fico de drogas(Opci√≥n 7), casos de violaciones(Opci√≥n 8), vandalismo(opci√≥n 9), milicias(Opci√≥n 10), extorciones(Opci√≥n 11), desapariciones(Opci√≥n 12), violencia intrafamiliar(Opci√≥n 13), Ninguno(Opci√≥n 14). Para esta variable se calcul√≥ las casillas con la opci√≥n 14 tom√°ndolas como 0's siendo "No tuvo problemas graves" y el resto como 1's siendo "Con problemas graves" y se calcul√≥ la proporci√≥n de problemas graves sobre los totales.   
 
-**asalto**: Esta variable hace referencia si en el ˙ltimo aÒo el encuestado o alg˙n miembro de su hogar ha sido vÌctima de alg˙n hecho contra su vida, patrimonio o seguridad personal entre otros. Esta variable tiene 19 opciones de respuesta que vendrÌan siendo los diferentes posibles atentados, los cuales son: carterismo(OpciÛn 1), hurto a partes del vehÌculo(OpciÛn 2), atraco(OpciÛn 3), amenazas(OpciÛn 4), hurto a residencias(OpciÛn 5), hurto a vehÌculos(OpciÛn 6), hurto a vehÌculos repartidores(OpciÛn 7), hurto a comercio(OpciÛn 8), hurto a empresas(opciÛn 9), chantajes(OpciÛn 10), homicidios(OpciÛn 11), accidentes de tr·nsito(OpciÛn 12), secuestro(OpciÛn 13), paseo millonario(OpciÛn 14), robo a cajero electrÛnico(OpciÛn 15), violencia fÌsica familiar(opciÛn 16), violaciones(OpciÛn 17), estafas(OpciÛn 18), Ninguno(OpciÛn 19), No responde(). Para esta variable se calculÛ las casillas con la opciÛn 19 tom·ndolas como 0's siendo "NO asaltado" y el resto como 1's siendo "Asaltado" y se calculÛ la proporciÛn de asaltos sobre los totales.   
+**asalto**: Esta variable hace referencia si en el √∫ltimo a√±o el encuestado o alg√∫n miembro de su hogar ha sido v√≠ctima de alg√∫n hecho contra su vida, patrimonio o seguridad personal entre otros. Esta variable tiene 19 opciones de respuesta que vendr√≠an siendo los diferentes posibles atentados, los cuales son: carterismo(Opci√≥n 1), hurto a partes del veh√≠culo(Opci√≥n 2), atraco(Opci√≥n 3), amenazas(Opci√≥n 4), hurto a residencias(Opci√≥n 5), hurto a veh√≠culos(Opci√≥n 6), hurto a veh√≠culos repartidores(Opci√≥n 7), hurto a comercio(Opci√≥n 8), hurto a empresas(opci√≥n 9), chantajes(Opci√≥n 10), homicidios(Opci√≥n 11), accidentes de tr√°nsito(Opci√≥n 12), secuestro(Opci√≥n 13), paseo millonario(Opci√≥n 14), robo a cajero electr√≥nico(Opci√≥n 15), violencia f√≠sica familiar(opci√≥n 16), violaciones(Opci√≥n 17), estafas(Opci√≥n 18), Ninguno(Opci√≥n 19), No responde(). Para esta variable se calcul√≥ las casillas con la opci√≥n 19 tom√°ndolas como 0's siendo "NO asaltado" y el resto como 1's siendo "Asaltado" y se calcul√≥ la proporci√≥n de asaltos sobre los totales.   
 
-**convivencia**: Esta variable hace referencia a los problemas de convivencia que se han tenido durante los ˙ltimos 12 meses en los barrios o veredas donde viven los encuestados. Esta variable tiene 12 opciones de respuesta para los encuestados, pero nosotros nos centraremos en hallar la proporciÛn de encuestados en cada barrio que hayan tenido problemas de convivencia y los que no, Para este c·lculo las casillas con la opciÛn 12 tom·ndolas como 0's siendo "NINGUN problema" y el resto como 1's siendo "Al menos un problema" y se calculÛ la proporciÛn de problemas de convivencia sobre los totales.  
+**convivencia**: Esta variable hace referencia a los problemas de convivencia que se han tenido durante los √∫ltimos 12 meses en los barrios o veredas donde viven los encuestados. Esta variable tiene 12 opciones de respuesta para los encuestados, pero nosotros nos centraremos en hallar la proporci√≥n de encuestados en cada barrio que hayan tenido problemas de convivencia y los que no, Para este c√°lculo las casillas con la opci√≥n 12 tom√°ndolas como 0's siendo "NINGUN problema" y el resto como 1's siendo "Al menos un problema" y se calcul√≥ la proporci√≥n de problemas de convivencia sobre los totales.  
 
 
 # Analisis preliminar de los datos
 
-## Medias, cuartiles y desviaciones est·ndar
+## Medias, cuartiles y desviaciones est√°ndar
 
 ```{r}
 summary(db_LibertadySeguridad)
 ```
 
-#### Desviaciones est·ndar
+#### Desviaciones est√°ndar
 
 ``` {r}
 db_LibertadySeguridad[,4:15] %>% select_if(is.numeric) %>% 
   apply(2, sd)
 ```
 
-Dada la informaciÛn sobre las medias arrojadas para cada variable, se puede resaltar que la proporciÛn de personas que consideran tener algun problema de seguridad en su barrio es alta con un `rmean(db_LibertadySeguridad$problemas_seguridad)`, la cual es una cifra negativa pues muestra que en la poblaciÛn hay problemas de seguridad graves. Para la convivencia se se puede resaltar tambien que la proporciÛn de personas no es tan alta como los problemas de seguridad pero podria seguir siendo significativa con una media de `rmean(db_LibertadySeguridad$convivencia)`.  
+Dada la informaci√≥n sobre las medias arrojadas para cada variable, se puede resaltar que la proporci√≥n de personas que consideran tener algun problema de seguridad en su barrio es alta con un `r mean(db_LibertadySeguridad$problemas_seguridad)`, la cual es una cifra negativa pues muestra que en la poblaci√≥n hay problemas de seguridad graves. Para la convivencia se se puede resaltar tambien que la proporci√≥n de personas no es tan alta como los problemas de seguridad pero podria seguir siendo significativa con una media de `r mean(db_LibertadySeguridad$convivencia)`.  
 
-Por otro lado, la proporciÛn de personas que sufrieron algun tipo de accidente en el ultimo aÒo es muy baja con una media de  `rmean(db_LibertadySeguridad$accidentalidad)` que vendria siendo algo muy positivo para la comunidad encuestada.
+Por otro lado, la proporci√≥n de personas que sufrieron algun tipo de accidente en el ultimo a√±o es muy baja con una media de  `r mean(db_LibertadySeguridad$accidentalidad)` que vendria siendo algo muy positivo para la comunidad encuestada.
 
 
 ## Graficas
 
-## Correlaciones y an·lisis de distribuciones
+## Correlaciones y an√°lisis de distribuciones
 
-Centrando nuestra atenciÛn en variables especificas:
+Centrando nuestra atenci√≥n en variables especificas:
 
 ```{r}
 ggpairs(data = db_LibertadySeguridad %>% dplyr::select(problemas_seguridad, convivencia, asalto),
        mapping = aes(alpha = 0.7))
 ```
 
-De la gr·fica anterior cabe resaltar la alta correlacion entre "problema_seguridad" las variables "asalto" y "convivencia". 
+De la gr√°fica anterior cabe resaltar la alta correlacion entre "problema_seguridad" las variables "asalto" y "convivencia". 
 
 
 ```{r}
 ggplot(data = db_LibertadySeguridad) +
   geom_jitter(mapping = aes(x = asalto, y = problemas_seguridad), alpha = 0.6)
 ```
-De este grafico se observa una posible correlaciÛn positiva entre las variables ASALTO y PROBLEMAS_SEGURIDAD lo cual tendrÌa sentido al mirar la proporciÛn de los encuestados que han sido asaltados aumenta con respecto a los problemas de seguridad m·s graves seg˙n los encuestados.
+De este grafico se observa una posible correlaci√≥n positiva entre las variables ASALTO y PROBLEMAS_SEGURIDAD lo cual tendr√≠a sentido al mirar la proporci√≥n de los encuestados que han sido asaltados aumenta con respecto a los problemas de seguridad m√°s graves seg√∫n los encuestados.
 
 
 ## Escalando las variables
@@ -227,14 +227,14 @@ Inicialmente escalaremos las variables que se usaran en los algoritmos de agrupa
 db_LibertadySeguridad_escalado <- db_LibertadySeguridad %>% 
   mutate_at(vars(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna), scale)
 
-# SelecciÛn de las columnas para el agrupamiento
+# Selecci√≥n de las columnas para el agrupamiento
 
 datos_escalados_agrupamiento <- db_LibertadySeguridad_escalado %>% 
   dplyr::select(-n, -encuesta_calidad.barrio, -encuesta_calidad.comuna)
 ```
 
 
-# AplicaciÛn de PCA 
+# Aplicaci√≥n de PCA 
 
 ```{r}
 pca <- prcomp(datos_escalados_agrupamiento)
@@ -243,7 +243,7 @@ summary(pca)
 
 ## Varianza explicada por cada componente
 
-Ahora, se mostrar· la varianza explicada por los componentes mediante el c·lculo de la suma acumulada del porcentaje explicado.
+Ahora, se mostrar√° la varianza explicada por los componentes mediante el c√°lculo de la suma acumulada del porcentaje explicado.
 
 ```{r}
 porcentaje_exp <- 100 * (pca$sdev ^ 2) / sum(pca$sdev ^ 2)
@@ -258,9 +258,9 @@ ggplot(data = data.frame(componente = factor(1:ncol(datos_escalados_agrupamiento
 
 ```
 
-En la gr·fica anterior, la linea horizontal roja corresponde a una varianza explicada acumulada de un 90%, por tanto se puede ver que al tomar las primeras 7 componentes principales se obtiene una varianza explicada de 92% aproximadamente, lo cu·l se usar· para hacer la reducciÛn de dimensionalidad.
+En la gr√°fica anterior, la linea horizontal roja corresponde a una varianza explicada acumulada de un 90%, por tanto se puede ver que al tomar las primeras 7 componentes principales se obtiene una varianza explicada de 92% aproximadamente, lo cu√°l se usar√° para hacer la reducci√≥n de dimensionalidad.
 
-## ProyecciÛn respecto a las componentes principales
+## Proyecci√≥n respecto a las componentes principales
 
 Primero proyectaremos los datos respecto a las componentes principales.
 
@@ -277,9 +277,9 @@ datos_agrupamiento <- datos_proyectados[, 1:7] %>% as_tibble()
 
 # Agrupamiento mediante K-means
 
-El primer mÈtodo que se usara para hacer el agrupamiento sera K-means. Para esto, realizaremos una gr·fica de codo que nos dar· indicios del n˙mero de grupos que debemos tomar dentro de este algoritmo.
+El primer m√©todo que se usara para hacer el agrupamiento sera K-means. Para esto, realizaremos una gr√°fica de codo que nos dar√° indicios del n√∫mero de grupos que debemos tomar dentro de este algoritmo.
 
-## SelecciÛn del $K$ Ûptimo (Gr·fica de codo)
+## Selecci√≥n del $K$ √≥ptimo (Gr√°fica de codo)
 
 ```{r}
 
@@ -296,27 +296,27 @@ ggplot(data = data.frame(k = factor(1:k_maximo), wss),
         aes(x = k, y = wss, group = 1)) +
   geom_point() +
   geom_line() +
-  xlab("N˙mero de grupos [K]") +
+  xlab("N√∫mero de grupos [K]") +
   ylab("Total de suma de cuadrados intra-grupos")
 ```
 
-Note que una selecciÛn de $K$ entre 7 y 9 es razonable, ya que la variacion de la suma de cuadrados intra-grupos no ofrece un cambio significativo. Se considera contraproducente hacer una selecciÛn muy grande de grupos en tÈrminos de la interpretabilidad del resultado ofrecido por el algoritmo de agrupamiento, pues se considera mas ˙til tener pocos grupos que sean altamente diferenciadores de la ciudad de MedellÌn contrario a tener una variedad de grupos altamente dispersos donde no se pueda identificar un patrÛn de agrupamiento claro.  
-Para favorecer la interpretabilidad y teniendo en cuenta que no hay agrupamientos incorrectos, se decide utilizar 6 grupos y realizar su an·lisis descriptivo que permita llegar a conclusiones dicientes de los barrios analizados.
+Note que una selecci√≥n de $K$ entre 7 y 9 es razonable, ya que la variacion de la suma de cuadrados intra-grupos no ofrece un cambio significativo. Se considera contraproducente hacer una selecci√≥n muy grande de grupos en t√©rminos de la interpretabilidad del resultado ofrecido por el algoritmo de agrupamiento, pues se considera mas √∫til tener pocos grupos que sean altamente diferenciadores de la ciudad de Medell√≠n contrario a tener una variedad de grupos altamente dispersos donde no se pueda identificar un patr√≥n de agrupamiento claro.  
+Para favorecer la interpretabilidad y teniendo en cuenta que no hay agrupamientos incorrectos, se decide utilizar 6 grupos y realizar su an√°lisis descriptivo que permita llegar a conclusiones dicientes de los barrios analizados.
 
 ## Agrupamiento con $K$ seleccionado
 
-Se fija la semilla de n˙meros aleatorios para garantizar la reproducibilidad de las conclusiones del agrupamiento, dado que el algoritmo k-Means toma grupos iniciales aleatorios para cada `n_start`.
+Se fija la semilla de n√∫meros aleatorios para garantizar la reproducibilidad de las conclusiones del agrupamiento, dado que el algoritmo k-Means toma grupos iniciales aleatorios para cada `n_start`.
 
 
 ```{r}
 set.seed(3)
-agrupamiento_kmeans <- kmeans(datos_agrupamiento, centers = 6, nstart = 10, iter.max = 15 )
+agrupamiento_kmeans <- kmeans(datos_agrupamiento, centers = 5, nstart = 10, iter.max = 15 )
 db_LibertadySeguridad_kmeans <- bind_cols(db_LibertadySeguridad, cluster = agrupamiento_kmeans$cluster)
 ```
 
 ## Mapa para el agrupamiento mediante K-means
 
-Al colorear el mapa de los barrios de MedellÌn de acuerdo a los grupos se obtiene la siguiente gr·fica.
+Al colorear el mapa de los barrios de Medell√≠n de acuerdo a los grupos se obtiene la siguiente gr√°fica.
 
 ```{r}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
@@ -335,7 +335,7 @@ for(nombre_mapa in nombres_mapa$nombre_barrio) {
   vector_grupos <- c(vector_grupos, grupo)
 }
 
-factpal <- colorFactor(rainbow(6), vector_grupos)
+factpal <- colorFactor(rainbow(5), vector_grupos)
 
 mapa_grupos <- tibble(
   nombre_barrio = vector_nombres, 
@@ -347,7 +347,6 @@ mapa_grupos <- tibble(
     grupo == 3 ~ "Grupo 3",
     grupo == 4 ~ "Grupo 4",
     grupo == 5 ~ "Grupo 5",
-    grupo == 6 ~ "Grupo 6",
     TRUE ~ "Sin muestra representativa")
 )
 
@@ -366,8 +365,8 @@ leaflet(data = political) %>%
   addLegend("bottomright", colors = colores$color, labels = as.character(colores$descripcion))
 ```
 
-## An·lisis descriptivo de los grupos obtenidos con k-means
-Para este an·lisis se utiliza la siguiente convenciÛn de medidas descriptivas: media (desviaciÛn est·ndar)
+## An√°lisis descriptivo de los grupos obtenidos con k-means
+Para este an√°lisis se utiliza la siguiente convenci√≥n de medidas descriptivas: media (desviaci√≥n est√°ndar)
 
 ```{r}
 media_sd <- function(variable) {
@@ -381,47 +380,47 @@ db_LibertadySeguridad_kmeans %>%
 ```
 
 
-**Los promedios y las porporciones que a continuaciÛn se presentan son con respecto a los diferentes grupos**
+**Los promedios y las porporciones que a continuaci√≥n se presentan son con respecto a los diferentes grupos**
 
-* <span style="color:`r colores$color[6]`"> Grupo 1: Alta proporciÛn de asaltos, mayor discapacidad - 91 barrios</span>
+* <span style="color:`r colores$color[6]`"> Grupo 1: Alta proporci√≥n de asaltos, mayor discapacidad - 91 barrios</span>
 
-Es el grupo con mayor proporciÛn de encuestados asaltados (13.63%) tambiÈn presenta altos problemas de convivencia y problemas de seguridad en los donde la mayor concentraciÛn es en la parte de la zona rosa de MedellÌn que son barrios como el Poblado y su periferia, y tambiÈn por el barrio de Laureles Estadio que es una parte turÌstica y con indicies de inseguridad.
+Es el grupo con mayor proporci√≥n de encuestados asaltados (13.63%) tambi√©n presenta altos problemas de convivencia y problemas de seguridad en los donde la mayor concentraci√≥n es en la parte de la zona rosa de Medell√≠n que son barrios como el Poblado y su periferia, y tambi√©n por el barrio de Laureles Estadio que es una parte tur√≠stica y con indicies de inseguridad.
 
 
 * <span style="color:`r colores$color[5]`">Grupo 2: Alta accidentalidad - 25 barrios</span>
 
 
-Este grupo presenta la mayor porporciÛn de accidentalidad en el valle de Aburr· (8.64%) y tambiÈn tienen una proporcion muy baja que consideran sentirse muy inseguro en los barrios.
+Este grupo presenta la mayor porporci√≥n de accidentalidad en el valle de Aburr√° (8.64%) y tambi√©n tienen una proporcion muy baja que consideran sentirse muy inseguro en los barrios.
 
 
 * <span style="color:`r colores$color[4]`">Grupo 3: Buena movilidad - 143 barrios</span>
 
 
-En este grupo hay mayor proporciÛn de encuestados que consideran que "hay libertad" para moverse libremente en el barrio (65.03%), una gran proporciÛn de las personas de estos barrios consideran seguro el lugar donde viven. Se observa tambiÈn que hay Ìndices de tener problemas de convivencia.
+En este grupo hay mayor proporci√≥n de encuestados que consideran que "hay libertad" para moverse libremente en el barrio (65.03%), una gran proporci√≥n de las personas de estos barrios consideran seguro el lugar donde viven. Se observa tambi√©n que hay √≠ndices de tener problemas de convivencia.
 
 
 * <span style="color:`r colores$color[3]`">Grupo 4: Baja accidentalidad- Buena Seguridad - 16 barrios</span>
 
 
-Este grupo con gran parte de su concentraciÛn al noroccidente de MedellÌn presenta la proporciÛn m·s baja de accidentalidad (3.99%), esta observaciÛn tendrÌa algo de sentido por lo que est· ubicada en veredas donde la poblaciÛn es escasa. Adem·s tiene la mayor proporciÛn de encuestados que considera que hay mucha libertad para moverse en su barrio o vereda, por otra parte tiene la mayor proporciÛn de personas que considera su barrio o vereda muy seguro lo cual est· relacionado con la tasa m·s baja de encuestados asaltados. 
+Este grupo con gran parte de su concentraci√≥n al noroccidente de Medell√≠n presenta la proporci√≥n m√°s baja de accidentalidad (3.99%), esta observaci√≥n tendr√≠a algo de sentido por lo que est√° ubicada en veredas donde la poblaci√≥n es escasa. Adem√°s tiene la mayor proporci√≥n de encuestados que considera que hay mucha libertad para moverse en su barrio o vereda, por otra parte tiene la mayor proporci√≥n de personas que considera su barrio o vereda muy seguro lo cual est√° relacionado con la tasa m√°s baja de encuestados asaltados. 
 
 
 * <span style="color:`r colores$color[2]`">Grupo 5: Muy peligroso - 31 barrios</span>
 
 
-Este grupo presenta la mayor proporciÛn de personas que consideran vivir en un barrio o vereda muy inseguro (34.54%), lo cual es coherente con la gran tasa de problemas de seguridad, asaltos y problemas de convivencia que consideran estos habitantes.
+Este grupo presenta la mayor proporci√≥n de personas que consideran vivir en un barrio o vereda muy inseguro (34.54%), lo cual es coherente con la gran tasa de problemas de seguridad, asaltos y problemas de convivencia que consideran estos habitantes.
 
 
 * <span style="color:`r colores$color[1]`">Grupo 6: Muy peligroso - 2 barrios</span>
 
 
-Este grupo solo esta conformado por el barrio "GUAYAQUIL" y la vereda "LA ILUSI”N" el cual presenta la mayor proporciÛn de problemas de seguridad y convivencia.
+Este grupo solo esta conformado por el barrio "GUAYAQUIL" y la vereda "LA ILUSI√ìN" el cual presenta la mayor proporci√≥n de problemas de seguridad y convivencia.
 
 
 
-## Agrupamiento Jer·rquico
+## Agrupamiento Jer√°rquico
 
-En general no se concluir· con respecto a los resultados del agrupamiento jer·rquico, ya que Èste no logrÛ distinguir entre grupos de interÈs y asocia m·s de 270 barrios en una categorÌa a pesar de contar con caracterÌsticas diferentes.
+En general no se concluir√° con respecto a los resultados del agrupamiento jer√°rquico, ya que √©ste no logr√≥ distinguir entre grupos de inter√©s y asocia m√°s de 270 barrios en una categor√≠a a pesar de contar con caracter√≠sticas diferentes.
 
 ```{r}
 cantidad_grupos_jerarquico <- 7
@@ -431,7 +430,7 @@ agrupamiento <- hclust(distancia, method = "complete")
 arbol_corte <- cutree(agrupamiento, k = cantidad_grupos_jerarquico)
 ```
 
-## Mapa geogr·fico usando el agrupamiento jer·rquico
+## Mapa geogr√°fico usando el agrupamiento jer√°rquico
 
 ```{r, echo=FALSE}
 political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
