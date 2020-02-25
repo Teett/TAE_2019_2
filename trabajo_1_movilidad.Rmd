@@ -1,54 +1,327 @@
 ---
 title: "Trabajo 1 TAE - Movilidad"
-author: "Nuestro equipo"
-date: "14/2/2020"
+author: "Equipo"
+date: "24 de febrero de 2020"
 output: html_document
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Librerias 
 ```{r}
+## LIBRERIAS NECESARIAS PARA REALIZAR EL ANÁLISIS
 library(tidyverse)
 library(data.table)
 library(readxl)
+library(GGally)
+library(leaflet)
+library(raster)
+library(mltools)
 ```
 Lectura de datos: 
 ```{r}
-raw_encuesta <- fread("databases/calidad_vida_ok.csv", encoding = "UTF-8") %>% 
+raw_encuesta <- fread("calidad_vida_ok.csv", encoding = "UTF-8") %>% 
   as_tibble()
-
-diccionario <- read_excel("databases/diccionario_ecv_2016.xlsx")
 ```
 
-Creacion de la base de datos
 ```{r}
-  # Funcion para la moda
-getmode <- function(v) {
-  v <- v[!is.na(v)]
-   uniqv <- unique(v)
-   uniqv[which.max(tabulate(match(v, uniqv)))]
+# Unificación de las estadísticas de los barrios "ALTAVISTA" y "CABECERA ALTAVISTA"
+raw_encuesta <- raw_encuesta %>% mutate(
+  encuesta_calidad.barrio = case_when(
+    encuesta_calidad.barrio == "CABECERA ALTAVISTA" ~ "ALTAVISTA",
+    encuesta_calidad.barrio == "CIUDADELA NUEVO OCCIDENTE" ~ "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "AREA DE EXPANCION SAN CRISTOBAL" ~ "ÁREA DE EXPANSIÓN SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "CABECERA SAN CRISTÓBAL" ~ "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "SAN CRISTOBAL" ~ "CABECERA URBANA CORREGIMIENTO SAN CRISTÓBAL",
+    encuesta_calidad.barrio == "PROGRESO  Nº 2" ~ "PROGRESO",
+    TRUE ~ encuesta_calidad.barrio
+  )
+)
+# One-hot encoding para variable estudio
+variables_categoricas <- raw_encuesta[, c("encuesta_calidad.p_318","encuesta_calidad.p_319","encuesta_calidad.p_320","encuesta_calidad.p_321","encuesta_calidad.p_322")] %>% mutate(encuesta_calidad.p_318 = as.factor(encuesta_calidad.p_318)) %>% rename(pavimentacion = encuesta_calidad.p_318)%>% mutate(encuesta_calidad.p_319 = as.factor(encuesta_calidad.p_319)) %>% rename(andenes = encuesta_calidad.p_319)%>% 
+mutate(encuesta_calidad.p_320 = as.factor(encuesta_calidad.p_320)) %>% rename(normas = encuesta_calidad.p_320)%>% 
+mutate(encuesta_calidad.p_321 = as.factor(encuesta_calidad.p_321)) %>% rename(cobertura = encuesta_calidad.p_321)%>% 
+mutate(encuesta_calidad.p_322 = as.factor(encuesta_calidad.p_322)) %>% rename(calidad = encuesta_calidad.p_322)
+
+variables_categoricas_encoding <- one_hot(as.data.table(variables_categoricas))
+raw_encuesta <- data.frame(raw_encuesta, variables_categoricas_encoding)
+```
+
+```{r}
+### BASE DE DATOS CON LA QUE SE VA A TRABAJAR
+db_movilidad <- raw_encuesta %>% 
+  mutate(encuesta_calidad.barrio = str_replace(encuesta_calidad.barrio, "ANDALUCIA", "ANDALUCÍA") %>% 
+  str_replace("Nº 2", "NO.2") %>% 
+  str_replace("Nº 1", "NO.1") %>% 
+  str_replace("Nº 3", "NO.3") %>%
+  str_replace("AREA EXPANSION", "ÁREA DE EXPANSIÓN") %>%
+  str_replace("EXPANCION", "EXPANSIÓN") %>% 
+  str_replace("AREA", "ÁREA") %>% 
+  str_replace("BOMBONA", "BOMBONÁ") %>% 
+  str_replace("LA ASOMADERA", "ASOMADERA") %>%
+  str_replace("BELALCAZAR", "BELALCÁZAR") %>% 
+  str_replace("CALAZANS", "CALASANZ") %>% 
+  str_replace("COLON", "COLÓN") %>% 
+  str_replace("MIRA FLORES", "MIRAFLORES") %>% 
+  str_replace("BARRIO FACULTAD DE MINAS", "FACULTAD DE MINAS") %>% 
+  str_replace("CABECERA SAN ANT DE PR.", "SAN ANTONIO DE PRADO") %>% 
+  str_replace("CARLOS E RESTREPO", "CARLOS E. RESTREPO") %>% 
+  str_replace("URQUITA", "URQUITÁ") %>% 
+  str_replace("LOS CERROS EL VERJEL", "LOS CERROS EL VERGEL") %>% 
+  str_replace("CAYCEDO", "CAICEDO") %>% 
+  str_replace("VALDES", "VALDÉS") %>% 
+  str_replace("CERRO EL VOLADOR", "B. CERRO EL VOLADOR") %>% 
+  str_replace("MOSCU", "MOSCÚ") %>% 
+  str_replace("JOSELA", "JOSÉ LA") %>%
+  str_replace("JOSE", "JOSÉ") %>% 
+  str_replace("EL YOLOMBO", "YOLOMBO") %>% 
+  str_replace("PIEDRAS BLANCAS", "PIEDRAS BLANCAS - MATASANO") %>% 
+  str_replace("BASILIA", "BRASILIA") %>% 
+  str_replace("VILLA TINA", "VILLATINA") %>% 
+  str_replace("LILIAM", "LILLIAM") %>% 
+  str_replace("BOLIVAR", "BOLÍVAR") %>% 
+  str_replace("CORREGIMIENTO PALMITAS", "PALMITAS SECTOR CENTRAL") %>% 
+  str_replace("INES", "INÉS") %>% 
+  str_replace("FE", "FÉ") %>% 
+  str_replace("LUCIA", "LUCÍA") %>% 
+  str_replace("SABIO", "SAVIO") %>% 
+  str_replace("BERMEJAL- LOS ÁLAMOS", "BERMEJAL-LOS ÁLAMOS") %>% 
+  str_replace("BOLÍVARIANA", "BOLIVARIANA") %>% 
+  str_replace("EL NOGAL - LOS ALMENDROS", "EL NOGAL-LOS ALMENDROS") %>% 
+  str_replace("JUAN XXIII - LA QUIEBRA", "JUAN XXIII LA QUIEBRA") %>% 
+  str_replace("PROGRESO  Nº 2", "EL PROGRESO") %>% 
+  str_replace("MARIA", "MARÍA") %>% 
+  str_replace("PLAYÓN", "PLAYON") %>% 
+  str_replace("EL SOCORRO / LA GABRIELA", "EL SOCORRO") %>% 
+  str_replace("FÉRRINI", "FERRINI") %>% 
+  str_replace("LA CANDE LARIA", "LA CANDELARIA") %>%
+  str_replace("EL PLAYON", "PLAYÓN") %>%
+  str_replace("IGUANA", "IGUANÁ") %>%
+  str_replace("MARÍA CANO - CARAMBOLAS", "MARÍA CANO-CARAMBOLAS") %>%
+  str_replace("DE ABURRA", "DEL ABURRÁ") %>%
+  str_replace("ALTAVISTA CENTRAL", "ALTAVISTA SECTOR CENTRAL") %>%
+  str_replace("SECTOR CENTRAL", "CENTRO ADMINISTRATIVO") %>%
+  str_replace("ALTAVISTA CENTRO ADMINISTRATIVO", "ALTAVISTA SECTOR CENTRAL") %>%
+  str_replace("SANTA ELENA CENTRO ADMINISTRATIVO", "SANTA ELENA SECTOR CENTRAL") %>%
+  str_replace("PALMITAS CENTRO ADMINISTRATIVO", "PALMITAS SECTOR CENTRAL") %>%  
+  str_replace("PROGRESO", "EL PROGRESO")
+  ) %>% 
+  group_by(encuesta_calidad.barrio, encuesta_calidad.comuna) %>% 
+  summarize(n = n(),
+            proporcion_pavimentacion_1 = sum(`pavimentacion_1` == 1, na.rm = TRUE) / sum(!is.na(`pavimentacion_1`), na.rm = TRUE),
+            proporcion_pavimentacion_2 = sum(`pavimentacion_2` == 1, na.rm = TRUE) / sum(!is.na(`pavimentacion_2`), na.rm = TRUE),
+            proporcion_pavimentacion_3 = sum(`pavimentacion_3` == 1, na.rm = TRUE) / sum(!is.na(`pavimentacion_3`), na.rm = TRUE),
+            proporcion_pavimentacion_4 = sum(`pavimentacion_4` == 1, na.rm = TRUE) / sum(!is.na(`pavimentacion_4`), na.rm = TRUE),
+            proporcion_pavimentacion_5 = sum(`pavimentacion_5` == 1, na.rm = TRUE) / sum(!is.na(`pavimentacion_5`), na.rm = TRUE),
+            
+            proporcion_andenes_1 = sum(`andenes_1` == 1, na.rm = TRUE) / sum(!is.na(`andenes_1`), na.rm = TRUE),
+            proporcion_andenes_2 = sum(`andenes_2` == 1, na.rm = TRUE) / sum(!is.na(`andenes_2`), na.rm = TRUE),
+            proporcion_andenes_3 = sum(`andenes_3` == 1, na.rm = TRUE) / sum(!is.na(`andenes_3`), na.rm = TRUE),
+            proporcion_andenes_4 = sum(`andenes_4` == 1, na.rm = TRUE) / sum(!is.na(`andenes_4`), na.rm = TRUE),
+            proporcion_andenes_5 = sum(`andenes_5` == 1, na.rm = TRUE) / sum(!is.na(`andenes_5`), na.rm = TRUE),
+            
+            proporcion_normas_1 = sum(`normas_1` == 1, na.rm = TRUE) / sum(!is.na(`normas_1`), na.rm = TRUE),
+            proporcion_normas_2 = sum(`normas_2` == 1, na.rm = TRUE) / sum(!is.na(`normas_2`), na.rm = TRUE),
+            proporcion_normas_3 = sum(`normas_3` == 1, na.rm = TRUE) / sum(!is.na(`normas_3`), na.rm = TRUE),
+            proporcion_normas_4 = sum(`normas_4` == 1, na.rm = TRUE) / sum(!is.na(`normas_4`), na.rm = TRUE),
+            proporcion_normas_5 = sum(`normas_5` == 1, na.rm = TRUE) / sum(!is.na(`normas_5`), na.rm = TRUE),
+            
+            proporcion_cobertura_1 = sum(`cobertura_1` == 1, na.rm = TRUE) / sum(!is.na(`cobertura_1`), na.rm = TRUE),
+            proporcion_cobertura_2 = sum(`cobertura_2` == 1, na.rm = TRUE) / sum(!is.na(`cobertura_2`), na.rm = TRUE),
+            proporcion_cobertura_3 = sum(`cobertura_3` == 1, na.rm = TRUE) / sum(!is.na(`cobertura_3`), na.rm = TRUE),
+            proporcion_cobertura_4 = sum(`cobertura_4` == 1, na.rm = TRUE) / sum(!is.na(`cobertura_4`), na.rm = TRUE),
+            proporcion_cobertura_5 = sum(`cobertura_5` == 1, na.rm = TRUE) / sum(!is.na(`cobertura_5`), na.rm = TRUE),
+            
+            proporcion_calidad_1 = sum(`calidad_1` == 1, na.rm = TRUE) / sum(!is.na(`calidad_1`), na.rm = TRUE),
+            proporcion_calidad_2 = sum(`calidad_2` == 1, na.rm = TRUE) / sum(!is.na(`calidad_2`), na.rm = TRUE),
+            proporcion_calidad_3 = sum(`calidad_3` == 1, na.rm = TRUE) / sum(!is.na(`calidad_3`), na.rm = TRUE),
+            proporcion_calidad_4 = sum(`calidad_4` == 1, na.rm = TRUE) / sum(!is.na(`calidad_4`), na.rm = TRUE),
+            proporcion_calidad_5 = sum(`calidad_5` == 1, na.rm = TRUE) / sum(!is.na(`calidad_5`), na.rm = TRUE)
+            
+          ) %>% as_tibble()
+# Eliminamos el barrio desconocido
+db_movilidad <- db_movilidad%>% 
+  filter(encuesta_calidad.barrio != "DESCONOCIDO")
+```
+#Escritura de base de datos
+```{r}
+### 2.  ANÁLISIS DESCRIPTIVO
+```
+# Descripcion de las variables seleccionadas
+
+* **proporcion_pavimentacion:** La construcción de esta variable se hizo a partir de la pregunta 318. La variable se calcula como la proporción de personas que califican de 1 a 5 la condición en que se encuentra la pavimentación en su barrio o vereda. Esta proporción se realizo en las distintas calificaciones de 1 a 5.
+* **proporcion_andenes:** La construcción de esta variable se hizo a partir de la pregunta 319. La variable se calcula como la proporción de personas que califican de 1 a 5 la condición en que se encuentran los andenes y separadores de calles en su barrio o vereda. Esta proporción se realizo en las distintas calificaciones de 1 a 5.
+* **proporcion_normas:** La construcción de esta variable se hizo a partir de la pregunta 320. La variable se calcula como la proporción de personas que califican de 1 a 5 el cumplimiento de normas de transito en su barrio o vereda. Esta proporción se realizo en las distintas calificaciones de 1 a 5.
+* **proporcion_cobertura:** La construcción de esta variable se hizo a partir de la pregunta 321. La variable se calcula como la proporción de personas que califican de 1 a 5 la cobertura que tienen los medios de transporte en su barrio o vereda. Esta proporción se realizo en las distintas calificaciones de 1 a 5.
+* **proporcion_calidad:** La construcción de esta variable se hizo a partir de la pregunta 322. La variable se calcula como la proporción de personas que califican de 1 a 5 la calidad del transporte público en su barrio o vereda. Esta proporción se realizo en las distintas calificaciones de 1 a 5.
+
+# ANÁLISIS DESCRIPTIVO
+* De la información que nos arroja el summary, podemos observar que el 50% de de los barrios tiene una proporción de habitantes `r summary(db_movilidad)[c(2,5),8]`(entre el 2% y el 5%), que califica el estado de pavimentación de sus calles como excelente, es decir, con una calificación de 5.
+
+* Para la proporción de personas que califica el estado de los andenes y separadores de las calles como excelentes tenemos que el 50% de los barrios tienen una proporción de habitantes `r summary(db_movilidad)[c(2,5),13]`(entre el 3% y el 7%), con una calificación de 5.
+
+* Para la proporción de personas que califica el cumplimiento de las normas de transito como excelente tenemos que el 50% de los barrios tienen una proporción de habitantes `r summary(db_movilidad)[c(2,5),18]`(menos del 1% y el 4%), con una calificación de 5.
+
+* Para la proporción de personas que califica la cobertura del transporte publico como excelentes, tenemos que el 50% de los barrios tienen una proporción de habitantes `r summary(db_movilidad)[c(2,5),23]`(entre el 9% y el 20%), con una calificación de 5.
+
+* Finalmente tenemos una proporción de habitantes `r summary(db_movilidad)[c(2,5),28]`(entre el 8% y el 16%), que considera que la calidad del transporte público en su barrio es excelente.
+
+#ANÁLISIS DESCRIPTIVO
+```{r}
+summary(db_movilidad)[,c(1:3,4,9,14,19,24)]
+```
+
+# Algunas descripciones
+* De forma muy general podemos observar que el 50% de de los barrios tiene una proporción de habitantes `r summary(db_movilidad)[2,24]` `r summary(db_movilidad)[5,14]`(menos del 1% y el 9%), que califican como deficientes todas los estandares de movilidad en su barrio.
+
+```{r}
+ggplot(data = db_movilidad) +
+  geom_histogram(mapping = aes(x = proporcion_cobertura_5), binwidth = 0.002)
+ggplot(data = db_movilidad) +
+  geom_histogram(mapping = aes(x = proporcion_calidad_5), binwidth = 0.002)
+```
+
+```{r}
+### 3.  ESCALAMIENTO DE LOS DATOS Y COMPONENTES PRINCIPALES
+datos1 <- scale(db_movilidad[,-c(1:3)])
+
+cp <- prcomp(datos1)
+  summary(cp)
+library(factoextra)
+fviz_eig(cp)
+```
+
+Después de observar el resumen de componentes principales, se puede ver que con las primeras 10 componentes principales se explica el 90% de la variabilidad de los datos.
+```{r}
+## AGRUPAMIENTO CON KMEANS
+k_maximo <- 15
+wss <- sapply(1:k_maximo, 
+              function(k) {
+                kmeans(datos1, k, nstart = 10, iter.max = 15 )$tot.withinss
+              })
+
+plot(1:k_maximo, wss,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Número de grupos [K]",
+     ylab="Total de suma de cuadrados intra-grupos")
+```
+
+
+```{r}
+#AGRUPAMIENTO CON KMEANS Y CUTREE
+gruposk <- 6
+agrupamiento_kmeans <- kmeans(datos1, centers = gruposk, nstart = 10, iter.max = 15 )
+
+cantidad_grupos <- 6
+
+distancia <- dist(datos1)
+agrupamiento <- hclust(distancia, method = "complete")
+arbol_corte <- cutree(agrupamiento, k = cantidad_grupos)
+
+```
+
+```{r}
+political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
+Encoding(political@data$NOMBRE) <- "UTF-8"
+political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
+grupos_barrios <- data.frame(barrio_nombre = db_movilidad$encuesta_calidad.barrio, comuna_nombre = db_movilidad$encuesta_calidad.comuna, grupo = agrupamiento_kmeans$cluster)
+nombres_mapa <- data.frame(nombre_barrio = political$NOMBRE)
+vector_nombres = c()
+vector_grupos = c()
+for(nombre_mapa in nombres_mapa$nombre_barrio) {
+  grupo <- grupos_barrios[grupos_barrios$barrio_nombre == nombre_mapa, 3][1]
+  vector_nombres <- c(vector_nombres, nombre_mapa)
+  vector_grupos <- c(vector_grupos, grupo)
 }
-
-encuesta_movilidad<-raw_encuesta
- 
-db_Movilidad<-encuesta_movilidad%>%
-  group_by(encuesta_calidad.barrio)%>%
-  summarize(n=n(),
-            pavimentacion=getmode(`encuesta_calidad.p_318`),
-            anden=getmode(`encuesta_calidad.p_319`),
-            normas_transito=getmode(`encuesta_calidad.p_320`),
-            cobertura=getmode(`encuesta_calidad.p_321`),
-            calidad_transporte=getmode(`encuesta_calidad.p_322`)
-            )
-db_Movilidad
-db_Movilidad[complete.cases(db_Movilidad),]
+mapa_grupos <- data.frame(
+  nombre_barrio = vector_nombres, 
+  grupo = vector_grupos
+)
+factpal <- colorFactor(rainbow(gruposk), mapa_grupos$grupo)
+array_grupos <- paste("Grupo", 1:gruposk)
+colores <- sapply(1:gruposk, factpal)
+leaflet(data = political) %>% 
+  addTiles() %>% 
+  addProviderTiles(providers$OpenStreetMap) %>% 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos$grupo), 
+              label = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo)),
+              popup = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo))) %>% 
+  addLegend("bottomright", colors = colores, labels = array_grupos)
 ```
+
+
+# Agrupamiento Kmeans
+* Este agrupamiento consta de 6 grupos que estan distribuidos así; Grupo1: 8 Barrios, Grupo 2: 2 Barrios, Grupo 3: 34 Barrios, Grupo 4: 129 Barrios, Grupo 5: 81 Barrios y Grupo 6: 54 Barrios.
+
+* Se puede observar que este método nos clasificó de forma mas objetiva todos los barrios; lo que nos podria llevar a decir que la movilidad en medellin esta marcado en algunos grupos.
+
+* Para el agrupamiento de cutree se tienen 6 grupos, se puede observar que la clasificación de los 6 grupos es muy acertada, casi se podria decir que se marcan las comunas o se agrupan por comunas con características similares; por ejemplo el poblado se ve muy bien marcado barrios como buenos aires, robledo y aranjuez estan clasificados en el mismo grupo.
+```{r}
+political <- shapefile("Barrio_Vereda/Barrio_Vereda.shp")
+Encoding(political@data$NOMBRE) <- "UTF-8"
+political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
+grupos_barrios <- data.frame(barrio_nombre = db_movilidad$encuesta_calidad.barrio, comuna_nombre = db_movilidad$encuesta_calidad.comuna, grupo = arbol_corte)
+nombres_mapa <- data.frame(nombre_barrio = political$NOMBRE)
+vector_nombres = c()
+vector_grupos = c()
+for(nombre_mapa in nombres_mapa$nombre_barrio) {
+  grupo <- grupos_barrios[grupos_barrios$barrio_nombre == nombre_mapa, 3][1]
+  vector_nombres <- c(vector_nombres, nombre_mapa)
+  vector_grupos <- c(vector_grupos, grupo)
+}
+mapa_grupos <- data.frame(
+  nombre_barrio = vector_nombres, 
+  grupo = vector_grupos
+)
+factpal <- colorFactor(rainbow(gruposk), mapa_grupos$grupo)
+array_grupos <- paste("Grupo", 1:gruposk)
+colores <- sapply(1:gruposk, factpal)
+leaflet(data = political) %>% 
+  addTiles() %>% 
+  addProviderTiles(providers$OpenStreetMap) %>% 
+  addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = ~factpal(mapa_grupos$grupo), 
+              label = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo)),
+              popup = as.character(paste(political$NOMBRE, " - Grupo ", mapa_grupos$grupo))) %>% 
+  addLegend("bottomright", colors = colores, labels = array_grupos)
+```
+
+# Agrupamiento Jerarquico
+* Este agrupamiento consta de 6 grupos que estan distribuidos así; Grupo1: 287 Barrios, Grupo 2: 17 Barrios, Grupo 3,4,5 y 6 con un barrio cada uno.
+
+* De forma muy general podemos observar que este método nos clasificó la mayoría de los barrios en un solo grupo; lo que nos podria llevar a decir que la movilidad en medellin es muy homogenea en todos sus barrios.
+
+* Con este método de clasificación es dificil inferir sobre la movilidad en medellín; sin embargo lo uncio que podriamos decir, es que los grupos con una movilidad diferente son las veredas o barrios lejanas a la zona urbana.
+
 
 ```{r}
-write_excel_csv2(db_Movilidad, "databases/db_Movilidad.csv")
-write_excel_csv2(db_Movilidad[complete.cases(db_Movilidad),], "databases/db_Movilidad_completecases.csv")
-```
+GRUPOT <- as.vector(arbol_corte)
+GRUPOK <- agrupamiento_kmeans$cluster
 
+BASE_GRUPOS <- data.frame(GRUPOT,GRUPOK,db_movilidad)
+BASET_G1 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOT== 1,]
+BASET_G2 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOT== 2,]
+BASET_G3 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOT== 3,]
+BASET_G4 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOT== 4,]
+BASET_G5 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOT== 5,]
+BASET_G6 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOT== 6,]
+
+BASEK_G1 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOK== 1,]
+BASEK_G2 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOK== 2,]
+BASEK_G3 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOK== 3,]
+BASEK_G4 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOK== 4,]
+BASEK_G5 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOK== 5,]
+BASEK_G6 <-BASE_GRUPOS[BASE_GRUPOS$GRUPOK== 6,]
+
+summary(BASEK_G1)[,c(3,4,5,25,30)]
+
+summary(BASEK_G6)[,c(3,4,5,25,30)]
+
+```
+En este agrupamiento podemos notar que hay una buena clasificación y la proporción de personas que califican como excelente la cobertura y la calidad del transporte en sus barrios aumenta en cada grupo del 1 al 6, luego los barrios del grupo 6 contienen una mayor proporcion de personas en promedio que califican como excelente la movilidad en sus lugares de residencia.
+```{r}
+summary(BASET_G1)[,c(3,4,5,25,30)]
+
+summary(BASET_G2)[,c(3,4,5,25,30)]
+```
+Al realizar un resumen de los grupos seleccionados por el método de agrupamiento jerarquico, se observa que la proporcion de personas que califica como exelente la cobertura y calidad de su transporte, esta alrededor del 15%, esto se ve en el grupo 1; sin embargo los otros grupos tienen muy pocos barrios, por lo que no son comparables, porque los grupos del 3 al 6 tiene tan solo un barrio.
