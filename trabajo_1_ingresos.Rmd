@@ -3,6 +3,8 @@ title: "Trabajo 1 TAE - Ingresos"
 author: "Equipo"
 date: "13/2/2020"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 ## Librerías: 
 ```{r message=FALSE, warning=FALSE}
@@ -191,9 +193,10 @@ db_ingresos[which(db_ingresos$gasto_servicios==max_gasto_servicios),1]
 ## Gráfico (1).
 ```{r warning=FALSE}
 grafico<-ggpairs(db_ingresos,columns = 4:10, mapping=aes(alpha = 0.4))
-ggsave(filename="Correlación.png", plot =grafico,  width = 20, height = 20)
-
+ggsave(filename="images/correlacion.png", plot =grafico,  width = 20, height = 20)
 ```
+
+![Correlación entre las variables](images/correlacion.png)
 
 ## Matriz de correlaciones:
 ```{r warning=FALSE}
