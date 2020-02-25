@@ -530,3 +530,14 @@ db_escolaridad_jerarquico[which(db_escolaridad_jerarquico$grupo == grupo_mayor_u
 ```
 
 Esto muestra que en el sector del Poblado aun puede haber una diferenciación entre los barrios, mucho más detallada de lo que puede encontrarse con el algoritmo K-means.
+
+# Referencias
+
+* 
+*
+*
+*
+*
+*
+*
+*
