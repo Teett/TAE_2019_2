@@ -20,6 +20,24 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Introducción
+
+Con el aumento constante de los datos, la alcadía de Medellín ha tomado la iniciativa de liberar información al público para que las personas que están interesadas en el análisis de datos puedan extraer información valiosa que pueda ayudar a desarrollar políticas que beneficien a la comunidad o para detectar patrones que permitan identificar problemáticas sociales y sugerir posibles soluciones.
+
+Uno de estos conjuntos de datos es la Encuesta de Calidad de Vida - Medellín Cómo Vamos, la cual consta de 342 preguntas que cubren 15 dimensiones sociales. Esta encuesta es realizada tomando una muestra de cada barrio de las 16 comunas y 5 corregimientos de la ciudad de Medellín, con el objetivo de realizar un seguimiento y medición de las condiciones socio-económicas de la ciudad.
+
+El objetivo principal de este trabajo es agrupar los barrios de Medellín de acuerdo a 5 de las 15 dimensiones mediante el uso de técnicas de aprendizaje estadístico y tomando como insumo la Encuesta de Calidad de Vida - Medellín Cómo Vamos. Las dimensiones seleccionadas dentro de este trabajo son:
+
+* Salud.
+* Escolaridad.
+* Libertad y seguridad.
+* Movilidad.
+* Ingresos y gastos.
+
+Estas dimensiones fueron escogidas ya que al realizar una comparación entre las que ofrece esta encuesta, se considera que estas 5 son una buena representación de las condiciones en las que se encuentran los habitantes de la ciudad. Considerando que la salud, la educación, la libertad y la seguridad son derechos sociales fundamentales sobre los cuales se debe prestar particular atención por parte de los gobernantes de la ciudad. Por otro lado, los ingresos y gastos pueden ayudar a identificar el estado económico en el que se encuentran los habitantes de Medellín.
+
+En este trabajo, se determinan las variables que caracterizan cada dimensión y se calculan para cada barrio con base en las respuestas a las preguntas realizadas a cada uno de los hogares de la ciudad. Posteriormente se hace una análisis descriptivo mostrando patrones relevantes en la información extraída para cada barrio. Finalmente, se utilizan algoritmos de agrupamiento como K-means y aglomeramiento jerárquico sobre cada dimensión para agrupar los barrios en diferentes grupos, se representa cada grupo dentro de un mapa de la ciudad y se extraen las correspondientes conclusiones de dichos agrupamientos.
+
 
 # Preparación y lectura de datos
 
@@ -2212,7 +2230,27 @@ leaflet(data = political) %>%
   addLegend("bottomright", colors = colores_jer$color, labels = as.character(colores_jer$grupo))
 ```
 
+# Propuestas de continuación del trabajo
+
+
+* Es interesante realizar un análisis sobre las dimensiones faltantes dentro de este trabajo con el objetivo de extraer conclusiones y cruzarlas con los resultados obtenidos.
+* Incorporar la información de otras fuentes y estudios que tengan un objetivo similar al de este trabajo para validar los resultados obtenidos.
+* Realizar este mismo procedimiento con encuestas de diferentes años para observar la evolución de la ciudad en las dimensiones seleccionadas.
+* Proponer soluciones concretas a las problemáticas de segregación para las dimensiones Salud, Movilidad, Ingresos y Escolaridad con base en la información obtenida en los agrupamientos.
 
 
 # Referencias
+
+* Alcaldía de Medellín. (2012). Medellín en Cifras No 3. Las Metas del Desarrollo. Retrieved from https://www.medellin.gov.co/irj/go/km/docs/wpccontent/Sites/Subportal del Ciudadano/Planeación Municipal/Secciones/Publicaciones/Documentos/Medellín en Cifras/Medellin en Cifras 3.pdf
+
+* Ben Gorman. (2018). Package “mltools.”
+
+* Lortie, C. (2017). R for Data Science. In Journal of Statistical Software. https://doi.org/10.18637/jss.v077.b01
+
+* Medata. (2020). Encuesta calidad de vida. Retrieved February 25, 2020, from http://medata.gov.co/dataset/encuesta-calidad-de-vida
+
+* Medellin Cómo Vamos. (2019). Informe Calidad de Vida de Medellin - 2018. 254. Retrieved from http://weekly.cnbnews.com/news/article.html?no=124000
+
+* R Core Team (2019). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria.
+  URL https://www.R-project.org/.
 
