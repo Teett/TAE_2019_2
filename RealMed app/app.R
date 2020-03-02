@@ -9,14 +9,19 @@ library(data.table)
 #----------------------------------------Base Code--------------------------------------------------#
 
 # Shared data read
+paletas_cualitativas <- RColorBrewer::brewer.pal.info %>%
+    rownames_to_column(var = "palette") %>% 
+    filter(category == "qual")
 # Mapas
 political <- shapefile("../Barrio_Vereda/Barrio_Vereda.shp")
 Encoding(political@data$NOMBRE) <- "UTF-8"
 political$NOMBRE <- political$NOMBRE %>% toupper() %>% str_replace("DE  MESA", "DE MESA")
 
+
 # Salud
+db_salud <- fread("../databases/db_salud.csv", encoding = "UTF-8") %>% as_tibble()
 db_mapa_salud <- fread("../databases/db_mapa_salud.csv", encoding = "UTF-8") %>% as_tibble()
-Encoding(db_mapa_salud$descripcion) <- "latin-1"
+clustering_salud <- fread("../databases/clustering_salud.csv") %>% as_tibble()
 
 # ------------------------------------- Salud ------------------------------------------------------#
 colores_salud <- db_mapa_salud %>%
@@ -32,12 +37,15 @@ mapa_salud <- leaflet(data = political) %>%
                 popup = as.character(political$NOMBRE)) %>% 
     addLegend("bottomright", colors = colores_salud$color, labels = as.character(colores_salud$descripcion))
 
+media_sd <- function(variable) {
+    paste0(round(mean(variable), 4), " (", round(sd(variable), 4), ")")
+}
 
 #-----------------------------------------Shiny App-------------------------------------------------#
-# Define UI for application that draws a histogram
-ui <- dashboardPage(title = "Realidad de los barrios de Medellín: Diferencia de clases estadísticas",
+# User Interface
+ui <- dashboardPage(title = "Realidad de los barrios de Medellín: Diferencia de clases en dimensiones de ciudad",
                     skin = "black",
-    dashboardHeader(title = "Dimensiones de ciudad"),
+    dashboardHeader(title = "Dimensiones"),
     dashboardSidebar(
         sidebarMenu(
             id = "Tipos de accidente",
@@ -48,10 +56,22 @@ ui <- dashboardPage(title = "Realidad de los barrios de Medellín: Diferencia de
             menuItem(text = "Seguridad y libertad", tabName = "seguridad", icon = icon("landmark"))
         )
     ),
-    dashboardBody(
+    dashboardBody(titlePanel(h1("Realidad de los barrios de Medellín: Diferencia de clases en dimensiones de ciudad", align = "center")),
         tabItems(
             tabItem(tabName = "salud",
-                    leafletOutput("leaflet_salud", height = 600),
+                    box(leafletOutput("leaflet_salud", width = 600, height = 600)),
+                    box(title = h2("¡Explora tu propio clustering!", align = "center"),
+                        leafletOutput("leaflet_salud_dinamico"),
+                        "Los grupos que selecciones aquí comparten características en salud detectadas por el algoritmo, es decir que no necesariamente están ordenados por la calidad, 
+                        para concluir correctamente sobre tus grupos puedes analizar los resultados de cada cluster en la tabla",
+                        sliderInput(inputId = "k_salud", 
+                                    label = h3("Selecciona el número de grupos"),
+                                    min = 2, 
+                                    max = 10, 
+                                    value = 5),
+                        DTOutput("tabla_salud_dinamica")
+                        )
+                    ),
             tabItem(tabName = "escolaridad"),
             tabItem(tabName = "ingresos"),
             tabItem(tabName = "movilidad"),
@@ -59,12 +79,58 @@ ui <- dashboardPage(title = "Realidad de los barrios de Medellín: Diferencia de
             )
     )
 )
-)
 
-# Server logic - Programming
+# Server logic - Programming ---------------------------------------------------------------------------------------------------------#
 server <- function(input, output) {
-    # Salud ----------------------------------------------------------------------------------------
+    # Salud --------------------------------------------------------------------------------------------------------------#
     output$leaflet_salud <- renderLeaflet(mapa_salud)
+    output$leaflet_salud_dinamico <- renderLeaflet({
+        # Input de usuario
+        set.seed(3)
+        kmeans_salud <- kmeans(clustering_salud, centers = eval(parse(text = input$k_salud)), nstart = 10, iter.max = 15)
+        db_salud_kmeans <- bind_cols(db_salud, cluster = kmeans_salud$cluster)
+        grupos_barrios_salud <- data.frame(barrio_nombre = db_salud$encuesta_calidad.barrio, grupo = kmeans_salud$cluster)
+        nombres_mapa_salud <- data.frame(nombre_barrio = political$NOMBRE)
+        
+        vector_nombres_salud = c()
+        vector_grupos_salud = c()
+        
+        for(nombre_mapa in nombres_mapa_salud$nombre_barrio) {
+            grupo <- grupos_barrios_salud[grupos_barrios_salud$barrio_nombre == nombre_mapa, 2][1]
+            vector_nombres_salud <- c(vector_nombres_salud, nombre_mapa)
+            vector_grupos_salud <- c(vector_grupos_salud, grupo)
+        }
+        factpal_salud <- colorFactor(rainbow(eval(parse(text = input$k_salud))), vector_grupos_salud)
+        
+        mapa_dinamico_salud <- tibble(
+            nombre_barrio = vector_nombres_salud, 
+            grupo = vector_grupos_salud,
+            color = factpal_salud(grupo)
+        )
+        
+        colores_dinamico_salud <- mapa_dinamico_salud %>%
+            dplyr::select(-nombre_barrio) %>% 
+            distinct(color, .keep_all = TRUE) %>% 
+            arrange(desc(grupo))
+        
+        leaflet(data = political) %>% 
+            addTiles() %>% 
+            addProviderTiles(providers$OpenStreetMap) %>% 
+            addPolygons(fill = TRUE, stroke = TRUE, weight = 2, color = mapa_dinamico_salud$color, 
+                        label = as.character(political$NOMBRE),
+                        popup = as.character(political$NOMBRE)) %>% 
+            addLegend("bottomright", colors = colores_dinamico_salud$color, labels = as.character(colores_dinamico_salud$grupo))
+    })
+    output$tabla_salud_dinamica <- renderDT({
+        set.seed(3)
+        kmeans_salud <- kmeans(clustering_salud, centers = eval(parse(text = input$k_salud)), nstart = 10, iter.max = 15)
+        db_salud_kmeans <- bind_cols(db_salud, cluster = kmeans_salud$cluster)
+        db_salud_kmeans %>%
+        dplyr::select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>% 
+        group_by(cluster) %>% 
+        summarise_all(~media_sd(.))
+        })
+        
 }
 
 # Run the application 
