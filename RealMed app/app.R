@@ -6,6 +6,7 @@ library(DT)
 library(leaflet)
 library(raster)
 library(data.table)
+library(knitr)
 #----------------------------------------Base Code--------------------------------------------------#
 
 # Shared data read
@@ -59,7 +60,13 @@ ui <- dashboardPage(title = "Realidad de los barrios de Medellín: Diferencia de
     dashboardBody(titlePanel(h1("Realidad de los barrios de Medellín: Diferencia de clases en dimensiones de ciudad", align = "center")),
         tabItems(
             tabItem(tabName = "salud",
-                    box(leafletOutput("leaflet_salud", width = 600, height = 600)),
+                    box(leafletOutput("leaflet_salud")),
+                    tabBox(title = "Características de los grupos",
+                           tabPanel("Grupo 1", uiOutput("grupo_1")),
+                           tabPanel("Grupo 2", uiOutput("grupo_2")),
+                           tabPanel("Grupo 3", uiOutput("grupo_3")),
+                           tabPanel("Grupo 4", uiOutput("grupo_4")),
+                           tabPanel("Grupo 5", uiOutput("grupo_5"))),
                     box(title = h2("¡Explora tu propio clustering!", align = "center"),
                         leafletOutput("leaflet_salud_dinamico"),
                         "Los grupos que selecciones aquí comparten características en salud detectadas por el algoritmo, es decir que no necesariamente están ordenados por la calidad, 
@@ -129,9 +136,23 @@ server <- function(input, output) {
         dplyr::select(-encuesta_calidad.barrio, -encuesta_calidad.comuna, -n) %>% 
         group_by(cluster) %>% 
         summarise_all(~media_sd(.))
-        })
-        
+        }, options = list(scrollX = TRUE))
+    ##-------------------------------------------------Text outputs-------------------------------------------#
+    output$grupo_1 <- renderUI({
+        HTML(markdown::markdownToHTML(knit("grupo_1.rmd", quiet = TRUE)))
+    })
+    output$grupo_2 <- renderUI({
+        HTML(markdown::markdownToHTML(knit("grupo_2.rmd", quiet = TRUE)))
+    })
+    output$grupo_3 <- renderUI({
+        HTML(markdown::markdownToHTML(knit("grupo_3.rmd", quiet = TRUE)))
+    })
+    output$grupo_4 <- renderUI({
+        HTML(markdown::markdownToHTML(knit("grupo_4.rmd", quiet = TRUE)))
+    })
+    output$grupo_5 <- renderUI({
+        HTML(markdown::markdownToHTML(knit("grupo_5.rmd", quiet = TRUE)))
+    })
 }
-
 # Run the application 
 shinyApp(ui = ui, server = server)
