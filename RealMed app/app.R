@@ -58,15 +58,17 @@ ui <- dashboardPage(title = "Realidad de los barrios de Medellín: Diferencia de
         )
     ),
     dashboardBody(titlePanel(h1("Realidad de los barrios de Medellín: Diferencia de clases en dimensiones de ciudad", align = "center")),
-        tabItems(
+                  width = 12, 
+        tabItems( 
             tabItem(tabName = "salud",
-                    box(leafletOutput("leaflet_salud")),
+                    box(leafletOutput("leaflet_salud"), width = 12),
                     tabBox(title = "Características de los grupos",
                            tabPanel("Grupo 1", uiOutput("grupo_1")),
                            tabPanel("Grupo 2", uiOutput("grupo_2")),
                            tabPanel("Grupo 3", uiOutput("grupo_3")),
                            tabPanel("Grupo 4", uiOutput("grupo_4")),
-                           tabPanel("Grupo 5", uiOutput("grupo_5"))),
+                           tabPanel("Grupo 5", uiOutput("grupo_5")),
+                           width = 12, height = 500),
                     box(title = h2("¡Explora tu propio clustering!", align = "center"),
                         leafletOutput("leaflet_salud_dinamico"),
                         "Los grupos que selecciones aquí comparten características en salud detectadas por el algoritmo, es decir que no necesariamente están ordenados por la calidad, 
@@ -75,8 +77,9 @@ ui <- dashboardPage(title = "Realidad de los barrios de Medellín: Diferencia de
                                     label = h3("Selecciona el número de grupos"),
                                     min = 2, 
                                     max = 10, 
-                                    value = 5),
-                        DTOutput("tabla_salud_dinamica")
+                                     value = 5),
+                        DTOutput("tabla_salud_dinamica"),
+                        width = 12
                         )
                     ),
             tabItem(tabName = "escolaridad"),

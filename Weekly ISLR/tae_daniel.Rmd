@@ -1,0 +1,114 @@
+---
+title: "Trabajo 2 - Técnicas de aprendizaje estadístico"
+author: "Luis Daniel Chavarría"
+date: "9/3/2020"
+output:
+  rmdformats::readthedown:
+    self_contained: true
+    lightbox: true
+    gallery: true
+    highlight: tango
+
+    
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# a) Análisis descriptivo
+
+El conjunto de datos `Weekly` contiene porcentajes de retorno semanales del índice S&P entre los años 1990 y 2010 con 1089 observaciones.
+
+- `Year`: es el año en el que fue obtenida la observación.
+- `Lag 1-5`: Retornos porcentuales de las 5 semanas anteriores, respectivamente.
+- `Volume`: Volumen de acciones intercambiadas (Número promedio de acciones diarias intercambiadas en billones).
+- `Today`: Retorno porcentual de la semana.
+- `Direction`: Indica si el mercado tuvo un retorno positivo o negativo en esta semana.
+
+Encabezados y primeras 6 observaciones:
+
+```{r, echo=F, message=F, warning=F}
+#Librerías
+library(tidyverse)
+library(tsibble)
+library(fable)
+library(ISLR)
+library(plotly)
+library(ggthemes)
+library(GGally)
+library(yardstick)
+weekly <- as_tibble(Weekly)
+head(as_tibble(weekly))
+```
+
+## Volumen promedio de acciones diarias intercambiadas en el tiempo 
+
+Se evidencia un crecimiento constante con un alza grande en el año 2005 y una estabilización de la trayectoria alrededor del año 2007. Se añadió un ruido a la posición de cada punto para poder evidenciar la densidad, además de transparencia. Se utilizó el método `mgcv::gam` para ajustar la tendencia. 
+
+```{r, echo=F, warning=F, message=F}
+  p <- weekly %>%
+  ggplot(aes(x = Year, y = Volume)) +
+  geom_jitter(alpha = 0.6) + 
+  geom_smooth() +
+  labs(x = NULL,
+       y = "Volumen (Billones)") +
+  theme_economist()
+
+p_box <- weekly %>%
+  ggplot(aes(x = as_factor(Year), y = Volume, color = Today)) +
+  geom_boxplot() +
+  theme_economist() +
+  theme(axis.text.x = element_text(angle = 45)) +
+  labs(x = NULL,
+       y = "Volumen (Billones)")
+
+ggplotly(p, width = 800, height = 500)
+ggplotly(p_box, width = 800, height = 500)
+```
+
+El incremento en la volatilidad del índice acompañó su crecimiento a partir del 2007.
+
+## Correlación entre las variables
+
+No se encontraron relaciones lineales claras entre las variables. Se presentan comportamientos esperados de la variable `Today` con la variable categórica `Direction` representada en el color, donde los valores negativos están asociados a un decrecimiento.
+
+```{r, echo=F, fig.width=12, fig.height=9, warning=F, message=F}
+weekly %>% 
+ggpairs(columns = 2:8, mapping = aes(color = Direction), legend = 1,
+                lower = list(continuous = wrap("points", alpha = 0.6))) +
+  theme_light() +
+  theme(legend.position = "bottom")
+```
+
+# b) ¿Podemos predecir si el índice subirá o no mediante regresión logística?
+
+Utilicemos regresión logística para predecir si habrá un retorno positivo del mercado en esta semana. Para ello, se utilizará el retorno porcentual de las 5 últimas semanas y el volumen.
+
+```{r, message=F}
+market_logistic <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = weekly, family = binomial)
+summary(market_logistic)
+```
+
+Si realizamos una prueba de hipótesis formal para la significancia de los parámetros, encontraremos que la probabilidad de rechazar la hipótesis nula es muy grande para todas las variables predictoras excepto para el `Lag2` donde al parecer hay significancia. El valor en el tiempo $t-2$  parece tener una relación con el tiempo $t$.
+
+```{r, echo=F}
+contrasts(as_factor(weekly$Direction))
+market_logistic_class <- tibble(value = predict(market_logistic, type = "response"),
+                                pred = fct_relevel(as_factor(case_when(value > 0.5 ~ "Up",
+                                                  TRUE ~ "Down")), "Down", "Up"),
+                                real = weekly$Direction)
+
+market_logistic_class %>% 
+conf_mat(truth = real, estimate = pred, ) %>% 
+  autoplot(type = "heatmap")
+
+market_logistic_class %>% 
+  metrics(truth = real, estimate = pred)
+```
+
+Se obtiene una tasa de clasificación correcta `accuracy` del 56.1% utilizando regresión logística. Es importante interpretar este resultado correctamente, ya que la predicción obtenida indica que el mercado subió 557 días y bajó 54 días, y que no se está prediciendo el valor en el tiempo $t+1$.
+
+Cada predicción individual se debe interpretar de la siguiente manera: "Dadas las 5 semanas anteriores y el volumen de ésta, el mercado tendrá un retorno positivo"
