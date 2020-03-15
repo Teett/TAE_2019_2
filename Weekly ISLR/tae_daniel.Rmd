@@ -1,5 +1,5 @@
 ---
-title: "Trabajo 2 - Técnicas de aprendizaje estadístico"
+title: "Técnicas en aprendizaje estadístico - Introduction to Statistical Learning - ISLR"
 author: "Luis Daniel Chavarría"
 date: "9/3/2020"
 output:
@@ -8,6 +8,7 @@ output:
     lightbox: true
     gallery: true
     highlight: tango
+    code_folding: "hide"
 
     
 editor_options: 
@@ -18,7 +19,9 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# a) Análisis descriptivo
+# Literal 4.7.1 -  Ejercicio 10
+
+## a) Análisis descriptivo
 
 El conjunto de datos `Weekly` contiene porcentajes de retorno semanales del índice S&P entre los años 1990 y 2010 con 1089 observaciones.
 
@@ -30,25 +33,26 @@ El conjunto de datos `Weekly` contiene porcentajes de retorno semanales del índ
 
 Encabezados y primeras 6 observaciones:
 
-```{r, echo=F, message=F, warning=F}
+```{r, message=F, warning=F}
 #Librerías
-library(tidyverse)
-library(tsibble)
-library(fable)
-library(ISLR)
-library(plotly)
-library(ggthemes)
-library(GGally)
-library(yardstick)
+library(tidyverse) # Manipulación, limpieza y gráficos
+library(ISLR) # Bases de datos
+library(plotly) # Interactividad gráfica
+library(ggthemes) # Presentación
+library(GGally) # Correlación
+library(yardstick) # Métricas
+library(MASS) # Clasificadores
+library(class) # Clasificadores
+library(broom) # Resultados tidy de modelos
 weekly <- as_tibble(Weekly)
-head(as_tibble(weekly))
+head((weekly))
 ```
 
-## Volumen promedio de acciones diarias intercambiadas en el tiempo 
+### Volumen promedio de acciones diarias intercambiadas en el tiempo 
 
 Se evidencia un crecimiento constante con un alza grande en el año 2005 y una estabilización de la trayectoria alrededor del año 2007. Se añadió un ruido a la posición de cada punto para poder evidenciar la densidad, además de transparencia. Se utilizó el método `mgcv::gam` para ajustar la tendencia. 
 
-```{r, echo=F, warning=F, message=F}
+```{r, warning=F, message=F}
   p <- weekly %>%
   ggplot(aes(x = Year, y = Volume)) +
   geom_jitter(alpha = 0.6) + 
@@ -71,11 +75,13 @@ ggplotly(p_box, width = 800, height = 500)
 
 El incremento en la volatilidad del índice acompañó su crecimiento a partir del 2007.
 
-## Correlación entre las variables
+### Correlación entre las variables
 
 No se encontraron relaciones lineales claras entre las variables. Se presentan comportamientos esperados de la variable `Today` con la variable categórica `Direction` representada en el color, donde los valores negativos están asociados a un decrecimiento.
 
-```{r, echo=F, fig.width=12, fig.height=9, warning=F, message=F}
+![](cor.png)
+
+```{r, echo=F, fig.width=12, fig.height=9, warning=F, message=F, include=F}
 weekly %>% 
 ggpairs(columns = 2:8, mapping = aes(color = Direction), legend = 1,
                 lower = list(continuous = wrap("points", alpha = 0.6))) +
@@ -83,9 +89,9 @@ ggpairs(columns = 2:8, mapping = aes(color = Direction), legend = 1,
   theme(legend.position = "bottom")
 ```
 
-# b) ¿Podemos predecir si el índice subirá o no mediante regresión logística?
+## b) ¿Podemos predecir si el índice subirá o no mediante regresión logística?
 
-Utilicemos regresión logística para predecir si habrá un retorno positivo del mercado en esta semana. Para ello, se utilizará el retorno porcentual de las 5 últimas semanas y el volumen.
+Utilicemos regresión logística para predecir si habrá un retorno positivo del mercado en esta semana. Para ello, se utilizará el retorno porcentual de las 5 últimas semanas y el volumen sin separar un conjunto de entrenamiento y de prueba (Modelo sobreajustado).
 
 ```{r, message=F}
 market_logistic <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = weekly, family = binomial)
@@ -94,7 +100,9 @@ summary(market_logistic)
 
 Si realizamos una prueba de hipótesis formal para la significancia de los parámetros, encontraremos que la probabilidad de rechazar la hipótesis nula es muy grande para todas las variables predictoras excepto para el `Lag2` donde al parecer hay significancia. El valor en el tiempo $t-2$  parece tener una relación con el tiempo $t$.
 
-```{r, echo=F}
+### c) Matriz de confusión de la regresión logística y calidad de la predicción del modelo sobreajustado
+
+```{r, fig.width=7, fig.height=4}
 contrasts(as_factor(weekly$Direction))
 market_logistic_class <- tibble(value = predict(market_logistic, type = "response"),
                                 pred = fct_relevel(as_factor(case_when(value > 0.5 ~ "Up",
@@ -102,8 +110,9 @@ market_logistic_class <- tibble(value = predict(market_logistic, type = "respons
                                 real = weekly$Direction)
 
 market_logistic_class %>% 
-conf_mat(truth = real, estimate = pred, ) %>% 
-  autoplot(type = "heatmap")
+conf_mat(truth = real, estimate = pred) %>% 
+  autoplot(type = "heatmap") +
+  labs(title = "Matriz de confusión para el modelo de regresión logística")
 
 market_logistic_class %>% 
   metrics(truth = real, estimate = pred)
@@ -111,4 +120,166 @@ market_logistic_class %>%
 
 Se obtiene una tasa de clasificación correcta `accuracy` del 56.1% utilizando regresión logística. Es importante interpretar este resultado correctamente, ya que la predicción obtenida indica que el mercado subió 557 días y bajó 54 días, y que no se está prediciendo el valor en el tiempo $t+1$.
 
-Cada predicción individual se debe interpretar de la siguiente manera: "Dadas las 5 semanas anteriores y el volumen de ésta, el mercado tendrá un retorno positivo"
+Cada predicción individual se debe interpretar de la siguiente manera: "Dadas las 5 semanas anteriores y el volumen de ésta, el mercado tendrá un retorno positivo". La mayor cantidad de errores se cometió prediciendo que el mercado iba a subir y en realidad bajó, esta situación ocurrió 430 veces.
+
+## d) Modelo de regresión logística sólo con `Lag2` y conjunto de prueba
+
+```{r, fig.width=7, fig.height=4}
+weekly_train <- weekly %>% 
+  filter(Year <= 2008)
+
+weekly_test <- weekly %>% 
+  filter(Year > 2008)
+
+lag2_logistic <- glm(Direction ~ Lag2, data = weekly_train, family = "binomial")
+summary(lag2_logistic)
+
+lag2_class <- tibble(value = predict(lag2_logistic, type = "response", newdata = weekly_test),
+                     pred = fct_relevel(as_factor(case_when(value > 0.5 ~ "Up",
+                                                  TRUE ~ "Down")), "Down", "Up"),
+                     real = weekly_test$Direction)
+
+lag2_class %>% 
+conf_mat(truth = real, estimate = pred) %>% 
+  autoplot(type = "heatmap") + 
+  labs(title = "Matriz de confusión para la regresión logística con Lag2 como único predictor")
+
+lag2_class %>% 
+  metrics(truth = real, estimate = pred)
+```
+
+Al igual que el modelo anterior, se tienen fallas al intentar predecir las bajas del mercado, sin embargo, este se validó en un conjunto de prueba de 104 observaciones desconocidas para el modelo. El `accuracy` en este caso es del 62.5%. Los resultados son sorpresivamente mejores que en el modelo sobreajustado del literal b).
+
+## d) Modelo LDA (Linear Discriminant Analysis) para predecir la tendencia del mercado
+
+```{r, fig.width=7, fig.height=4}
+lag2_lda <- lda(Direction ~ Lag2, data = weekly_train)
+lag2_lda
+
+plot(lag2_lda)
+
+lag2_lda_class <- tibble(pred = predict(lag2_lda, newdata = weekly_test)$class,
+                         real = weekly_test$Direction)
+
+lag2_lda_class %>% 
+conf_mat(truth = real, estimate = pred) %>% 
+  autoplot(type = "heatmap") + 
+  labs(title = "Matriz de confusión para el modelo LDA con Lag2 como único predictor")
+
+lag2_lda_class %>% 
+  metrics(truth = real, estimate = pred)
+```
+
+Se obtienen las mismas clasificaciones para el modelo LDA y el modelo de regresión logística. Como el coeficiente discriminante lineal es `Lag2` = 0.4414, es de esperar que en ambas categorías la gráfica de éstos sea similar. La matriz de confusión es igual a la del modelo logístico.
+
+## f) Modelo QDA (Quadratic Discriminant Analysis) para predecir la tendencia del mercado
+
+```{r, fig.width=6, fig.height=4}
+lag2_qda <- qda(Direction ~ Lag2, data = weekly_train)
+lag2_qda
+
+lag2_qda_class <- tibble(pred = predict(lag2_qda, newdata = weekly_test)$class,
+                         real = weekly_test$Direction)
+
+lag2_qda_class %>% 
+conf_mat(truth = real, estimate = pred) %>% 
+  autoplot(type = "heatmap") + 
+  labs(title = "Matriz de confusión para el modelo QDA con Lag2 como único predictor")
+
+lag2_qda_class %>% 
+  metrics(truth = real, estimate = pred)
+```
+
+El clasificador QDA clasificó todos los valores como "Up", si bien es una estrategia que otorga resultados buenos en términos porcentuales con respecto al *accuracy*, se espera que el modelo proponga en algunos casos predicciones de baja del mercado. 
+
+## g) Modelo KNN (K-Nearest Neighbors) para predecir la tendencia del mercado
+
+```{r, fig.width=6, fig.height=4}
+set.seed(1)
+lag2_knn <- knn(train = as.matrix(weekly_train$Lag2), test = as.matrix(weekly_test$Lag2), cl = weekly_train$Direction, k = 3)
+
+
+lag2_knn_class <- tibble(pred = lag2_knn,
+                         real = weekly_test$Direction)
+
+lag2_knn_class %>% 
+conf_mat(truth = real, estimate = pred) %>% 
+  autoplot(type = "heatmap") + 
+  labs(title = "Matriz de confusión para el modelo KNN con Lag2 como único predictor")
+
+lag2_knn_class %>% 
+  metrics(truth = real, estimate = pred)
+```
+
+El clasificador $KNN$ tiene una tasa de clasificación correcta del 50% utilizando $k = 1$, sin embargo, al utilizar $k = 3$ se obtiene un 54.8%. Este clasificador no tuvo inconvenientes en proponer predicciones variadas según el valor anterior del mercado.
+
+## h) ¿Qué métodos producen los mejores resultados para predecir la tendencia del mercado utilizando `Lag2`?
+
+Los métodos de regresión logística y análisis de discriminante lineal obtuvieron los mejores resultados, con un accuracy del 62.5%. Se decide favorecer al modelo de regresión logística dada la facilidad de interpretación de los coeficientes y las facilidades gráficas de comunicación que permite la curva logística.
+
+```{r}
+g <- augment_columns(lag2_logistic, type.predict = "response", newdata = weekly_test) %>% 
+  arrange(.fitted) %>% 
+  rownames_to_column() %>%
+  mutate(rowname = as.integer(rowname)) %>%
+  inner_join(lag2_class, by = c(.fitted = "value")) %>% 
+ggplot(aes(x = rowname, y= .fitted, color = Direction, label = Year, label1 = pred)) +
+  geom_point(alpha = 0.5, shape = 1, stroke = 2) +
+  geom_hline(yintercept = 0.5) +
+  theme_light() + 
+  xlab("Índice") +
+  ylab("Probabilidad de que el mercado suba")
+
+ggplotly(g, width = 800, height = 500)
+```
+
+## i) Mejora del mejor modelo y variables adicionales de interés
+
+### Selección Step-wise con la función `stepAIC` sin interacciones
+
+```{r}
+full_logistic <- glm(Direction ~ .-Year-Today, data = weekly_train, family = "binomial")
+
+stepAIC(full_logistic, direction = "both", trace = FALSE)
+
+step_logistic <- glm(Direction ~ Lag1 + Lag2, data = weekly_train, family = "binomial")
+
+step_class <- tibble(value = predict(step_logistic, type = "response", newdata = weekly_test),
+                     pred = fct_relevel(as_factor(case_when(value > 0.5 ~ "Up",
+                                                  TRUE ~ "Down")), "Down", "Up"),
+                     real = weekly_test$Direction)
+
+step_class %>% 
+conf_mat(truth = real, estimate = pred) %>% 
+  autoplot(type = "heatmap") + 
+  labs(title = "Matriz de confusión para la regresión logística")
+
+step_class %>% 
+  metrics(truth = real, estimate = pred)
+```
+
+El modelo seleccionado por *Stepwise selection* tiene un *accuracy* menor que el de un solo predictor, sin embargo, su AIC es el mismo. El AIC evalúa únicamente el ajuste, por lo que se recomendaría el modelo de una sola variable predictora. Es importante resaltar que el modelo de menor AIC podría ser mejor en un conjunto de prueba diferente.
+
+### Mejor modelo por tanteo de interacciones
+
+Se proponen variables con interacciones y se selecciona el modelo con mayor *accuracy* en el conjunto de prueba, en este caso utilizando la variable `Lag2` y la interacción entre `Lag1, Lag 4 y Volume`
+
+```{r}
+final_logistic <- glm(Direction ~ Lag2 + Lag1:Lag4:Volume, data = weekly_train, family = "binomial")
+summary(final_logistic)
+
+final_class <- tibble(value = predict(final_logistic, type = "response", newdata = weekly_test),
+                     pred = fct_relevel(as_factor(case_when(value > 0.5 ~ "Up",
+                                                  TRUE ~ "Down")), "Down", "Up"),
+                     real = weekly_test$Direction)
+
+final_class %>% 
+conf_mat(truth = real, estimate = pred) %>% 
+  autoplot(type = "heatmap") + 
+  labs(title = "Matriz de confusión para la regresión logística")
+
+final_class %>% 
+  metrics(truth = real, estimate = pred)
+```
+
+Con base en los resultados anteriores se selecciona el modelo por tanteo por su *accuracy* superior, sin embargo, esto puede ser un sobreajuste del conjunto de prueba; por ello, si este modelo fuera a producción se recomienda realizar validación cruzada para identificar si la interacción de variables añadida es significativa. Si no es lo es, el modelo seleccionado por *Stepwise selection* se considera apropiado.
